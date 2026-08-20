@@ -10,15 +10,16 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const PHONE = "+92 300 1234567";
-const EMAIL = "info@punjabhouse.pk";
+const Name = "Syed Ahsan Abrar";
+const PHONE = "+92 329 2158907";
+const EMAIL = "punjabhousekarachi@gmail.com";
 
 const info = [
   {
     icon: Phone,
-    title: "Phone",
-    value: PHONE,
-    note: "Call us for venue inquiries",
+    title: "Contact",
+    value: Name,
+    note: "Caretaker Punjab House Karachi",
   },
   {
     icon: MessageCircle,

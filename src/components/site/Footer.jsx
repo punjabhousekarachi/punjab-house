@@ -40,8 +40,12 @@ export default function Footer() {
               className="inline-flex items-center gap-3"
             >
 
-              <span className="w-12 h-12 rounded-xl bg-[#00c874] flex items-center justify-center font-black text-lg shadow-lg shadow-[#00c874]/20">
-                PH
+              <span className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-transparent shrink-0">
+                <img
+                  src="/images/logo.png"
+                  alt="Punjab House Logo"
+                  className="w-full h-full object-contain rounded-full"
+                />
               </span>
 
               <div>

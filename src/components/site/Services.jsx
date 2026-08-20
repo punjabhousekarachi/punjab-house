@@ -155,7 +155,7 @@ export default function Services() {
               shadow-md
             "
           >
-            Check Availability
+            Book Your Event
             <ArrowRight size={17} />
           </Link>
 

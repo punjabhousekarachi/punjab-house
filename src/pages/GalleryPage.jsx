@@ -70,7 +70,8 @@ export default function GalleryPage() {
                   shadow-[#00c874]/20
                 "
               >
-                Check Availability
+               Book Your Event
+
                 <ArrowRight size={18} />
               </Link>
 

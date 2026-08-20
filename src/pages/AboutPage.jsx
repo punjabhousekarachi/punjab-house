@@ -76,7 +76,7 @@ export default function AboutPage() {
                   shadow-[#00c874]/20
                 "
               >
-                Check Availability
+                Reserve Date
                 <ArrowRight size={18} />
               </a>
 
