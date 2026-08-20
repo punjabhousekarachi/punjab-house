@@ -35,68 +35,61 @@ export default function Footer() {
           ========================== */}
           <div>
 
+            {/* LOGO ONLY */}
             <Link
               to="/"
-              className="inline-flex items-center gap-3"
+              className="
+                inline-flex
+                items-center
+                shrink-0
+                w-30
+                h-16
+                overflow-hidden
+                rounded-full
+                group
+              "
             >
-
-              <span className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-transparent shrink-0">
-                <img
-                  src="/images/logo.png"
-                  alt="Punjab House Logo"
-                  className="w-full h-full object-contain rounded-full"
-                />
-              </span>
-
-              <div>
-                <span className="block text-xl font-black text-white">
-                  Punjab House
-                </span>
-
-                <span className="block text-[10px] font-semibold tracking-[0.25em] text-white/40 uppercase">
-                  Event Venue
-                </span>
-              </div>
-
+              <img
+                src="/images/logo.png"
+                alt="Punjab House Karachi"
+                className="
+                  h-16
+                  w-auto
+                  max-w-none
+                  object-contain
+                  transition-transform
+                  duration-300
+                  group-hover:scale-105
+                "
+              />
             </Link>
 
-
+            {/* DESCRIPTION */}
             <p className="text-white/60 text-sm leading-7 mt-6 max-w-md">
               Punjab House Karachi provides a spacious venue for
               weddings, corporate gatherings, family functions,
               Nikah ceremonies, and private events.
             </p>
 
-
-            {/* Social Icons */}
+            {/* =========================
+                SOCIAL ICONS
+            ========================== */}
             <div className="flex gap-3 mt-7">
 
-              <a
-                aria-label="Facebook"
-                href="#"
-                className="
-                  w-10 h-10
-                  rounded-full
-                  bg-white/5
-                  border border-white/10
-                  flex items-center justify-center
-                  hover:bg-[#00c874]
-                  hover:border-[#00c874]
-                  transition
-                "
-              >
-                <Facebook size={17} />
-              </a>
-
+              {/* Instagram */}
               <a
                 aria-label="Instagram"
-                href="#"
+                href="https://www.instagram.com/punjabhousekarachi/?hl=en"
                 className="
-                  w-10 h-10
+                  w-10
+                  h-10
                   rounded-full
                   bg-white/5
-                  border border-white/10
-                  flex items-center justify-center
+                  border
+                  border-white/10
+                  flex
+                  items-center
+                  justify-center
                   hover:bg-[#00c874]
                   hover:border-[#00c874]
                   transition
@@ -105,17 +98,22 @@ export default function Footer() {
                 <Instagram size={17} />
               </a>
 
+              {/* WhatsApp */}
               <a
                 aria-label="WhatsApp"
-                href="https://wa.me/923001234567"
+                href="https://wa.me/923292158907"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
-                  w-10 h-10
+                  w-10
+                  h-10
                   rounded-full
                   bg-white/5
-                  border border-white/10
-                  flex items-center justify-center
+                  border
+                  border-white/10
+                  flex
+                  items-center
+                  justify-center
                   hover:bg-[#00c874]
                   hover:border-[#00c874]
                   transition
@@ -134,7 +132,15 @@ export default function Footer() {
           ========================== */}
           <div>
 
-            <h4 className="font-bold text-sm uppercase tracking-[0.2em] text-white/80">
+            <h4
+              className="
+                font-bold
+                text-sm
+                uppercase
+                tracking-[0.2em]
+                text-white/80
+              "
+            >
               Quick Links
             </h4>
 
@@ -172,16 +178,37 @@ export default function Footer() {
           ========================== */}
           <div>
 
-            <h4 className="font-bold text-sm uppercase tracking-[0.2em] text-white/80">
+            <h4
+              className="
+                font-bold
+                text-sm
+                uppercase
+                tracking-[0.2em]
+                text-white/80
+              "
+            >
               Contact
             </h4>
 
             <div className="mt-6 space-y-5">
 
-              {/* Phone */}
+              {/* =========================
+                  PHONE
+              ========================== */}
               <div className="flex items-start gap-4">
 
-                <div className="w-10 h-10 rounded-xl bg-[#00c874]/10 flex items-center justify-center shrink-0">
+                <div
+                  className="
+                    w-10
+                    h-10
+                    rounded-xl
+                    bg-[#00c874]/10
+                    flex
+                    items-center
+                    justify-center
+                    shrink-0
+                  "
+                >
                   <Phone
                     size={18}
                     className="text-[#00c874]"
@@ -189,22 +216,37 @@ export default function Footer() {
                 </div>
 
                 <div>
+
                   <p className="text-white text-sm font-semibold">
-                    +92 300 1234567
+                    +92 329 2158907
                   </p>
 
                   <p className="text-white/40 text-xs mt-1">
                     Phone
                   </p>
+
                 </div>
 
               </div>
 
 
-              {/* Email */}
+              {/* =========================
+                  EMAIL
+              ========================== */}
               <div className="flex items-start gap-4">
 
-                <div className="w-10 h-10 rounded-xl bg-[#00c874]/10 flex items-center justify-center shrink-0">
+                <div
+                  className="
+                    w-10
+                    h-10
+                    rounded-xl
+                    bg-[#00c874]/10
+                    flex
+                    items-center
+                    justify-center
+                    shrink-0
+                  "
+                >
                   <Mail
                     size={18}
                     className="text-[#00c874]"
@@ -212,22 +254,37 @@ export default function Footer() {
                 </div>
 
                 <div>
+
                   <p className="text-white text-sm font-semibold break-all">
-                    info@punjabhouse.pk
+                    punjabhousekarachi@gmail.com
                   </p>
 
                   <p className="text-white/40 text-xs mt-1">
                     Email
                   </p>
+
                 </div>
 
               </div>
 
 
-              {/* Location */}
+              {/* =========================
+                  LOCATION
+              ========================== */}
               <div className="flex items-start gap-4">
 
-                <div className="w-10 h-10 rounded-xl bg-[#00c874]/10 flex items-center justify-center shrink-0">
+                <div
+                  className="
+                    w-10
+                    h-10
+                    rounded-xl
+                    bg-[#00c874]/10
+                    flex
+                    items-center
+                    justify-center
+                    shrink-0
+                  "
+                >
                   <MapPin
                     size={18}
                     className="text-[#00c874]"
@@ -235,7 +292,15 @@ export default function Footer() {
                 </div>
 
                 <div>
-                  <p className="text-white text-sm font-semibold leading-6">
+
+                  <p
+                    className="
+                      text-white
+                      text-sm
+                      font-semibold
+                      leading-6
+                    "
+                  >
                     GOR-1, Bath Island,
                     <br />
                     Clifton, Karachi
@@ -244,6 +309,7 @@ export default function Footer() {
                   <p className="text-white/40 text-xs mt-1">
                     Punjab House Karachi
                   </p>
+
                 </div>
 
               </div>
@@ -260,18 +326,22 @@ export default function Footer() {
         ========================== */}
         <div className="mt-14 pt-8 border-t border-white/10">
 
-          <div className="
-            rounded-2xl
-            border border-white/10
-            bg-white/5
-            px-6 py-5
-            flex
-            flex-col
-            md:flex-row
-            items-center
-            justify-between
-            gap-5
-          ">
+          <div
+            className="
+              rounded-2xl
+              border
+              border-white/10
+              bg-white/5
+              px-6
+              py-5
+              flex
+              flex-col
+              md:flex-row
+              items-center
+              justify-between
+              gap-5
+            "
+          >
 
             <div className="text-center md:text-left">
 
@@ -320,21 +390,23 @@ export default function Footer() {
       ========================== */}
       <div className="border-t border-white/10">
 
-        <div className="
-          max-w-7xl
-          mx-auto
-          px-6
-          sm:px-8
-          py-6
-          flex
-          flex-col
-          md:flex-row
-          items-center
-          justify-between
-          gap-3
-          text-center
-          md:text-left
-        ">
+        <div
+          className="
+            max-w-7xl
+            mx-auto
+            px-6
+            sm:px-8
+            py-6
+            flex
+            flex-col
+            md:flex-row
+            items-center
+            justify-between
+            gap-3
+            text-center
+            md:text-left
+          "
+        >
 
           <p className="text-white/40 text-sm">
             © {new Date().getFullYear()} Punjab House Karachi.
