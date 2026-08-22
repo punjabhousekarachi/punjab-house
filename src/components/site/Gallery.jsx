@@ -16,16 +16,16 @@ const items = [
     "Corporate",
     "Corporate Event",
   ],
-  [
-    "./public/images/wedding2.png",
-    "Wedding",
-    "Outdoor Event Space",
-  ],
-  [
-    "./public/images/wedding3.png",
-    "Reception",
-    "Elegant Event Space",
-  ],
+[
+  "/images/wedding2.png",
+  "Wedding",
+  "Outdoor Event Space",
+],
+[
+  "/images/wedding3.png",
+  "Reception",
+  "Elegant Event Space",
+],
 ];
 
 const filters = [
