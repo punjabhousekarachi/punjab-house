@@ -2,12 +2,12 @@ import React, { useState } from "react";
 
 const items = [
   [
-    "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=85",
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRswsuPK9van1eCyKppXmdzo-gUXlrZr9GIjHfZj_IeqxgDjFZgWV93VTxh&s=10",
     "Wedding",
     "Wedding Venue",
   ],
   [
-    "https://images.unsplash.com/photo-1507504031003-b417219a0fde?auto=format&fit=crop&w=1200&q=85",
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCDuh8PppY_KeN3IOTR2SRpRE8GmV3SYP2GkVEbuEIQ2YDScqqwWc4DJ8&s=10",
     "Reception",
     "Reception Venue",
   ],
@@ -17,12 +17,12 @@ const items = [
     "Corporate Event",
   ],
   [
-    "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=85",
+    "./public/images/wedding2.png",
     "Wedding",
     "Outdoor Event Space",
   ],
   [
-    "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=1200&q=85",
+    "./public/images/wedding3.png",
     "Reception",
     "Elegant Event Space",
   ],
