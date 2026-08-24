@@ -589,7 +589,7 @@ export default function BookNow() {
                     <option value="Corporate Event">
                       Nikah
                     </option>
-                    
+
                     <option value="Corporate Event">
                       Corporate Event
                     </option>
@@ -697,6 +697,13 @@ export default function BookNow() {
                   checked={
                     form.lawnRentAgreement
                   }
+                  onChange={handleChange}
+                />
+                 <Agreement
+                  title="Maintenance Charges"
+                  amount={form.maintenanceCharges}
+                  name="maintenanceAgreement"
+                  checked={form.maintenanceAgreement}
                   onChange={handleChange}
                 />
 
