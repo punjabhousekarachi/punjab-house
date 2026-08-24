@@ -121,7 +121,6 @@ console.log(
 console.log("PORT:", PORT);
 
 console.log("======================================");
-
 // ======================================================
 // GMAIL TRANSPORTER
 // ======================================================
@@ -134,11 +133,8 @@ if (
 ) {
   transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-
     port: 587,
-
     secure: false,
-
     requireTLS: true,
 
     auth: {
@@ -146,12 +142,11 @@ if (
       pass: process.env.GMAIL_APP_PASSWORD,
     },
 
+    // Force IPv4
     family: 4,
 
     connectionTimeout: 15000,
-
     greetingTimeout: 15000,
-
     socketTimeout: 20000,
 
     tls: {
@@ -159,15 +154,12 @@ if (
     },
   });
 
-  console.log(
-    "📧 Gmail SMTP transporter created."
-  );
+  console.log("📧 Gmail SMTP transporter created.");
 } else {
   console.error(
     "❌ Gmail SMTP transporter was NOT created."
   );
 }
-
 // ======================================================
 // VERIFY EMAIL
 // ======================================================
