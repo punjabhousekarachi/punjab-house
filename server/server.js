@@ -1,13 +1,7 @@
-// ======================================================
-// PUNJAB HOUSE KARACHI - BOOKING API
-// Railway Production Backend
-// ======================================================
-
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const dns = require("dns");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const { jsPDF } = require("jspdf");
 
 // ======================================================
@@ -16,44 +10,33 @@ const { jsPDF } = require("jspdf");
 
 dotenv.config();
 
-// Prefer IPv4
-try {
-  dns.setDefaultResultOrder("ipv4first");
-} catch (error) {
-  console.log("⚠️ IPv4 DNS preference unavailable.");
-}
-
 const app = express();
 
-// IMPORTANT:
-// Railway provides process.env.PORT automatically.
+// Railway provides PORT automatically
 const PORT = process.env.PORT || 5000;
 
 // ======================================================
-// RAILWAY BACKEND
+// FRONTEND
 // ======================================================
 
-const RAILWAY_URL =
-  "https://punjab-house-production.up.railway.app";
-
-// ======================================================
-// ALLOWED FRONTEND ORIGINS
-// ======================================================
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "https://punjab-house-karachi.netlify.app",
-];
+const FRONTEND_URL =
+  "https://punjab-house-karachi.netlify.app";
 
 // ======================================================
 // CORS
 // ======================================================
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  FRONTEND_URL,
+];
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow Postman, curl and server-to-server requests
+      // Allow requests without an Origin header
+      // such as curl/Postman/server requests.
       if (!origin) {
         return callback(null, true);
       }
@@ -65,27 +48,21 @@ app.use(
       console.log("⚠️ CORS blocked:", origin);
 
       return callback(
-        new Error(`CORS blocked for origin: ${origin}`)
+        new Error("Not allowed by CORS")
       );
     },
 
-    methods: [
-      "GET",
-      "POST",
-      "OPTIONS",
-    ],
+    methods: ["GET", "POST", "OPTIONS"],
 
     allowedHeaders: [
       "Content-Type",
       "Authorization",
+      "Accept",
     ],
 
     credentials: false,
   })
 );
-
-// Explicit OPTIONS handling
-app.options("*", cors());
 
 // ======================================================
 // BODY PARSER
@@ -105,28 +82,38 @@ app.use(
 );
 
 // ======================================================
-// SERVER INFORMATION
+// RESEND
+// ======================================================
+
+let resend = null;
+
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(
+    process.env.RESEND_API_KEY
+  );
+
+  console.log(
+    "📧 Resend email service initialized."
+  );
+} else {
+  console.error(
+    "❌ RESEND_API_KEY is missing."
+  );
+}
+
+// ======================================================
+// ENVIRONMENT STATUS
 // ======================================================
 
 console.log("======================================");
-console.log("Punjab House Karachi Booking API");
+console.log(
+  "Punjab House Karachi Booking API"
+);
 console.log("======================================");
 
 console.log(
-  "Railway URL:",
-  RAILWAY_URL
-);
-
-console.log(
-  "GMAIL_USER:",
-  process.env.GMAIL_USER
-    ? "SET"
-    : "MISSING"
-);
-
-console.log(
-  "GMAIL_APP_PASSWORD:",
-  process.env.GMAIL_APP_PASSWORD
+  "RESEND_API_KEY:",
+  process.env.RESEND_API_KEY
     ? "SET"
     : "MISSING"
 );
@@ -143,113 +130,12 @@ console.log(
   PORT
 );
 
+console.log(
+  "FRONTEND:",
+  FRONTEND_URL
+);
+
 console.log("======================================");
-
-// ======================================================
-// GMAIL SMTP TRANSPORTER
-// ======================================================
-
-let transporter = null;
-
-if (
-  process.env.GMAIL_USER &&
-  process.env.GMAIL_APP_PASSWORD
-) {
-  transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-
-    port: 587,
-
-    secure: false,
-
-    requireTLS: true,
-
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-
-    family: 4,
-
-    connectionTimeout: 10000,
-
-    greetingTimeout: 10000,
-
-    socketTimeout: 15000,
-
-    tls: {
-      rejectUnauthorized: true,
-    },
-  });
-
-  console.log(
-    "📧 Gmail SMTP transporter created."
-  );
-} else {
-  console.error(
-    "❌ Gmail SMTP transporter was NOT created."
-  );
-
-  console.error(
-    "⚠️ Check Railway Variables:"
-  );
-
-  console.error(
-    "GMAIL_USER"
-  );
-
-  console.error(
-    "GMAIL_APP_PASSWORD"
-  );
-}
-
-// ======================================================
-// VERIFY EMAIL
-// ======================================================
-
-async function verifyEmail() {
-  if (!transporter) {
-    console.log(
-      "⚠️ Email verification skipped."
-    );
-
-    return false;
-  }
-
-  try {
-    console.log(
-      "📧 Testing Gmail SMTP connection..."
-    );
-
-    await transporter.verify();
-
-    console.log(
-      "✅ Gmail SMTP connection successful."
-    );
-
-    return true;
-  } catch (error) {
-    console.error(
-      "❌ Gmail SMTP connection failed."
-    );
-
-    console.error(
-      "Code:",
-      error.code || "UNKNOWN"
-    );
-
-    console.error(
-      "Message:",
-      error.message || "Unknown error"
-    );
-
-    console.error(
-      "⚠️ Server will continue running."
-    );
-
-    return false;
-  }
-}
 
 // ======================================================
 // ESCAPE HTML
@@ -275,66 +161,19 @@ function generateBookingPDF(data) {
     "a4"
   );
 
-  const GREEN = [
-    0,
-    200,
-    116,
-  ];
-
-  const DARK = [
-    15,
-    23,
-    42,
-  ];
-
-  const TEXT = [
-    30,
-    41,
-    59,
-  ];
-
-  const MUTED = [
-    100,
-    116,
-    139,
-  ];
-
-  const BORDER = [
-    203,
-    213,
-    225,
-  ];
-
-  const LIGHT = [
-    248,
-    250,
-    252,
-  ];
-
-  const GREEN_LIGHT = [
-    236,
-    253,
-    245,
-  ];
-
-  const RED_LIGHT = [
-    255,
-    247,
-    247,
-  ];
-
-  const WHITE = [
-    255,
-    255,
-    255,
-  ];
+  const GREEN = [0, 200, 116];
+  const DARK = [15, 23, 42];
+  const TEXT = [30, 41, 59];
+  const MUTED = [100, 116, 139];
+  const BORDER = [203, 213, 225];
+  const LIGHT = [248, 250, 252];
+  const GREEN_LIGHT = [236, 253, 245];
+  const RED_LIGHT = [255, 247, 247];
+  const WHITE = [255, 255, 255];
 
   const PAGE_WIDTH = 210;
-
   const LEFT = 15;
-
   const RIGHT = 195;
-
   const CONTENT_WIDTH =
     RIGHT - LEFT;
 
@@ -355,7 +194,7 @@ function generateBookingPDF(data) {
       "F"
     );
 
-    // Logo
+    // Logo circle
     doc.setFillColor(...GREEN);
 
     doc.circle(
@@ -516,17 +355,19 @@ function generateBookingPDF(data) {
   }
 
   // ====================================================
-  // SPACE CHECK
+  // SPACE
   // ====================================================
 
-  function ensureSpace(height = 20) {
+  function ensureSpace(
+    height = 20
+  ) {
     if (y + height > 270) {
       addNewPage();
     }
   }
 
   // ====================================================
-  // SECTION HEADER
+  // SECTION HEADING
   // ====================================================
 
   function drawSectionHeading(
@@ -595,7 +436,7 @@ function generateBookingPDF(data) {
   }
 
   // ====================================================
-  // SINGLE FIELD
+  // FIELD
   // ====================================================
 
   function drawField(
@@ -609,7 +450,9 @@ function generateBookingPDF(data) {
       multiline = false,
     } = options;
 
-    ensureSpace(height + 7);
+    ensureSpace(
+      height + 7
+    );
 
     doc.setTextColor(...TEXT);
 
@@ -690,7 +533,8 @@ function generateBookingPDF(data) {
     const gap = 6;
 
     const width =
-      (CONTENT_WIDTH - gap) / 2;
+      (CONTENT_WIDTH - gap) /
+      2;
 
     ensureSpace(28);
 
@@ -764,7 +608,10 @@ function generateBookingPDF(data) {
       String(
         rightField.value || "-"
       ),
-      LEFT + width + gap + 4,
+      LEFT +
+        width +
+        gap +
+        4,
       y + 8
     );
 
@@ -783,20 +630,6 @@ function generateBookingPDF(data) {
     doc.setDrawColor(...WHITE);
 
     doc.setLineWidth(1.4);
-
-    if (
-      typeof doc.setLineCap ===
-      "function"
-    ) {
-      doc.setLineCap("round");
-    }
-
-    if (
-      typeof doc.setLineJoin ===
-      "function"
-    ) {
-      doc.setLineJoin("round");
-    }
 
     doc.line(
       x + size * 0.2,
@@ -877,8 +710,6 @@ function generateBookingPDF(data) {
 
       doc.setDrawColor(...MUTED);
 
-      doc.setLineWidth(0.8);
-
       doc.roundedRect(
         checkboxX,
         checkboxY,
@@ -948,10 +779,6 @@ function generateBookingPDF(data) {
   // ====================================================
 
   drawPageHeader();
-
-  // ====================================================
-  // TITLE
-  // ====================================================
 
   doc.setTextColor(...DARK);
 
@@ -1055,13 +882,11 @@ function generateBookingPDF(data) {
   drawTwoFields(
     {
       label: "No. of Rooms *",
-      value: data.rooms
-        ? `${data.rooms} ${
-            Number(data.rooms) === 1
-              ? "Room"
-              : "Rooms"
-          }`
-        : "-",
+      value: `${data.rooms} ${
+        Number(data.rooms) === 1
+          ? "Room"
+          : "Rooms"
+      }`,
     },
     {
       label: "Room Charges",
@@ -1116,9 +941,7 @@ function generateBookingPDF(data) {
 
   drawAgreementBox(
     "I have read and accepted all terms and conditions",
-    data.termsAccepted
-      ? "Accepted"
-      : "Not Accepted",
+    "Accepted",
     data.termsAccepted
   );
 
@@ -1231,6 +1054,12 @@ function validateBooking(data) {
     return "Client name is required.";
   }
 
+  if (
+    data.clientName.trim().length < 2
+  ) {
+    return "Client name must contain at least 2 characters.";
+  }
+
   const cnicRegex =
     /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
 
@@ -1269,21 +1098,16 @@ function validateBooking(data) {
 }
 
 // ======================================================
-// CREATE EMAIL HTML
+// EMAIL HTML
 // ======================================================
 
 function createEmailHTML(data) {
   return `
 <!DOCTYPE html>
-
 <html>
-
 <head>
-
 <meta charset="UTF-8">
-
 <title>Punjab House Booking</title>
-
 </head>
 
 <body style="
@@ -1328,14 +1152,9 @@ NEW BOOKING REQUEST
 
 </div>
 
-<div style="
-padding:30px;
-">
+<div style="padding:30px;">
 
-<h2 style="
-margin-top:0;
-color:#0f172a;
-">
+<h2 style="color:#0f172a;">
 Booking Details
 </h2>
 
@@ -1344,148 +1163,103 @@ width:100%;
 border-collapse:collapse;
 ">
 
+${[
+  [
+    "Client Name",
+    data.clientName,
+  ],
+  [
+    "Event Date",
+    data.eventDate,
+  ],
+  [
+    "Event",
+    data.event,
+  ],
+  [
+    "Event Timing",
+    data.eventTiming,
+  ],
+  [
+    "Lawn Rent",
+    data.lawnRent,
+  ],
+  [
+    "Lawn Rent Agreement",
+    data.lawnRentAgreement
+      ? "Accepted"
+      : "Not Accepted",
+  ],
+  [
+    "Maintenance Charges",
+    data.maintenanceCharges,
+  ],
+  [
+    "Maintenance Agreement",
+    data.maintenanceAgreement
+      ? "Accepted"
+      : "Not Accepted",
+  ],
+  [
+    "Advance Security",
+    data.advanceSecurity,
+  ],
+  [
+    "Advance Agreement",
+    data.advanceAgreement
+      ? "Accepted"
+      : "Not Accepted",
+  ],
+  [
+    "Rooms",
+    data.rooms,
+  ],
+  [
+    "Room Charges",
+    data.roomCharges ||
+      "Rs. 0/-",
+  ],
+  [
+    "CNIC",
+    data.cnic,
+  ],
+  [
+    "Contact No.",
+    data.contactNo,
+  ],
+  [
+    "Address",
+    data.address,
+  ],
+]
+  .map(
+    ([label, value]) => `
 <tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Client Name
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.clientName)}
-</td>
-</tr>
 
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Event Date
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.eventDate)}
-</td>
-</tr>
+<td style="
+padding:9px 0;
+color:#64748b;
+font-weight:bold;
+vertical-align:top;
+">
 
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Event
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.event)}
-</td>
-</tr>
+${escapeHTML(label)}
 
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Event Timing
 </td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.eventTiming)}
-</td>
-</tr>
 
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Lawn Rent
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.lawnRent)}
-</td>
-</tr>
+<td style="
+padding:9px 0;
+color:#0f172a;
+">
 
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Lawn Rent Agreement
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${data.lawnRentAgreement
-  ? "Accepted"
-  : "Not Accepted"}
-</td>
-</tr>
+${escapeHTML(value)}
 
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Maintenance Charges
 </td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.maintenanceCharges)}
-</td>
-</tr>
 
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Maintenance Agreement
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${data.maintenanceAgreement
-  ? "Accepted"
-  : "Not Accepted"}
-</td>
 </tr>
-
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Advance Security
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.advanceSecurity)}
-</td>
-</tr>
-
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Advance Agreement
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${data.advanceAgreement
-  ? "Accepted"
-  : "Not Accepted"}
-</td>
-</tr>
-
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Rooms
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.rooms)}
-</td>
-</tr>
-
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Room Charges
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(
-  data.roomCharges || "Rs. 0/-"
-)}
-</td>
-</tr>
-
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-CNIC
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.cnic)}
-</td>
-</tr>
-
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Contact No.
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.contactNo)}
-</td>
-</tr>
-
-<tr>
-<td style="padding:9px 0;color:#64748b;font-weight:bold;">
-Address
-</td>
-<td style="padding:9px 0;color:#0f172a;">
-${escapeHTML(data.address)}
-</td>
-</tr>
+`
+  )
+  .join("")}
 
 </table>
 
@@ -1497,9 +1271,7 @@ background:#ecfdf5;
 border:1px solid #bbf7d0;
 ">
 
-<strong style="
-color:#047857;
-">
+<strong style="color:#047857;">
 Completed Booking Form Attached
 </strong>
 
@@ -1508,8 +1280,10 @@ margin:7px 0 0;
 color:#64748b;
 font-size:14px;
 ">
+
 The complete filled booking form is attached
 to this email as a PDF.
+
 </p>
 
 </div>
@@ -1533,13 +1307,12 @@ GOR-1, Bath Island, Clifton, Karachi
 </div>
 
 </body>
-
 </html>
 `;
 }
 
 // ======================================================
-// SEND BOOKING EMAIL
+// SEND BOOKING EMAIL USING RESEND
 // ======================================================
 
 async function sendBookingEmail(
@@ -1547,15 +1320,9 @@ async function sendBookingEmail(
   pdfBuffer,
   fileName
 ) {
-  if (!transporter) {
+  if (!resend) {
     throw new Error(
-      "Email transporter is not configured."
-    );
-  }
-
-  if (!process.env.GMAIL_USER) {
-    throw new Error(
-      "GMAIL_USER is missing."
+      "Resend is not configured. RESEND_API_KEY is missing."
     );
   }
 
@@ -1565,75 +1332,110 @@ async function sendBookingEmail(
     );
   }
 
-  const mailOptions = {
-    from:
-      `"Punjab House Website" <${process.env.GMAIL_USER}>`,
+  // IMPORTANT:
+  //
+  // If your Resend account/domain is not verified,
+  // use onboarding@resend.dev as the sender.
+  //
+  // Once you verify your own domain in Resend,
+  // change this to something like:
+  //
+  // Punjab House <booking@yourdomain.com>
 
-    to:
-      process.env.ADMIN_EMAIL,
+  const fromEmail =
+    process.env.RESEND_FROM_EMAIL ||
+    "onboarding@resend.dev";
 
-    subject:
-      `New Punjab House Booking - ${data.clientName}`,
+  console.log(
+    "📧 Sending booking email with Resend..."
+  );
 
-    text: `
+  console.log(
+    "From:",
+    fromEmail
+  );
+
+  console.log(
+    "To:",
+    process.env.ADMIN_EMAIL
+  );
+
+  const result =
+    await resend.emails.send({
+      from: fromEmail,
+
+      to: [
+        process.env.ADMIN_EMAIL,
+      ],
+
+      subject:
+        `New Punjab House Booking - ${data.clientName}`,
+
+      text: `
 New Punjab House Booking
 
-Client Name:
-${data.clientName}
+Client Name: ${data.clientName}
+Event Date: ${data.eventDate}
+Event: ${data.event}
+Event Timing: ${data.eventTiming}
 
-Event Date:
-${data.eventDate}
+Lawn Rent: ${data.lawnRent}
+Maintenance Charges: ${data.maintenanceCharges}
+Advance Security: ${data.advanceSecurity}
 
-Event:
-${data.event}
+Rooms: ${data.rooms}
+Room Charges: ${
+        data.roomCharges ||
+        "Rs. 0/-"
+      }
 
-Event Timing:
-${data.eventTiming}
-
-Lawn Rent:
-${data.lawnRent}
-
-Maintenance Charges:
-${data.maintenanceCharges}
-
-Advance Security:
-${data.advanceSecurity}
-
-Rooms:
-${data.rooms}
-
-Room Charges:
-${data.roomCharges || "Rs. 0/-"}
-
-CNIC:
-${data.cnic}
-
-Contact:
-${data.contactNo}
+CNIC: ${data.cnic}
+Contact: ${data.contactNo}
 
 Address:
 ${data.address}
 `,
 
-    html:
-      createEmailHTML(data),
+      html: createEmailHTML(data),
 
-    attachments: [
-      {
-        filename: fileName,
-        content: pdfBuffer,
-        contentType: "application/pdf",
-      },
-    ],
-  };
+      attachments: [
+        {
+          filename: fileName,
 
-  return transporter.sendMail(
-    mailOptions
+          content:
+            pdfBuffer.toString(
+              "base64"
+            ),
+        },
+      ],
+    });
+
+  if (result.error) {
+    console.error(
+      "❌ Resend API error:",
+      result.error
+    );
+
+    throw new Error(
+      result.error.message ||
+        "Resend failed to send email."
+    );
+  }
+
+  console.log(
+    "✅ Resend email sent."
   );
+
+  console.log(
+    "Email ID:",
+    result.data?.id || "N/A"
+  );
+
+  return result.data;
 }
 
 // ======================================================
-// BOOKING ROUTE
+// BOOKING API
 // ======================================================
 
 app.post(
@@ -1644,7 +1446,7 @@ app.post(
     );
 
     console.log(
-      "📩 New booking request received."
+      "📩 NEW BOOKING REQUEST"
     );
 
     console.log(
@@ -1654,9 +1456,9 @@ app.post(
     try {
       const data = req.body;
 
-      // ----------------------------------------------
-      // VALIDATION
-      // ----------------------------------------------
+      // --------------------------------------------------
+      // VALIDATE
+      // --------------------------------------------------
 
       const validationError =
         validateBooking(data);
@@ -1669,51 +1471,70 @@ app.post(
 
         return res.status(400).json({
           success: false,
-          message: validationError,
+          message:
+            validationError,
         });
       }
 
-      // ----------------------------------------------
-      // EMAIL CONFIGURATION
-      // ----------------------------------------------
+      // --------------------------------------------------
+      // CHECK RESEND
+      // --------------------------------------------------
 
       if (
-        !process.env.GMAIL_USER ||
-        !process.env.GMAIL_APP_PASSWORD ||
-        !process.env.ADMIN_EMAIL
+        !process.env.RESEND_API_KEY
       ) {
         console.error(
-          "❌ Email environment variables are missing."
+          "❌ RESEND_API_KEY is missing."
         );
 
         return res.status(500).json({
           success: false,
           message:
-            "Email configuration is missing on Railway.",
+            "Email service is not configured on Railway.",
         });
       }
 
-      // ----------------------------------------------
+      // --------------------------------------------------
+      // CHECK ADMIN EMAIL
+      // --------------------------------------------------
+
+      if (
+        !process.env.ADMIN_EMAIL
+      ) {
+        console.error(
+          "❌ ADMIN_EMAIL is missing."
+        );
+
+        return res.status(500).json({
+          success: false,
+          message:
+            "Admin email is not configured on Railway.",
+        });
+      }
+
+      // --------------------------------------------------
       // GENERATE PDF
-      // ----------------------------------------------
+      // --------------------------------------------------
 
       console.log(
-        "📄 Generating booking PDF..."
+        "📄 Generating PDF..."
       );
 
       const pdfArrayBuffer =
         generateBookingPDF(data);
 
       const pdfBuffer =
-        Buffer.from(pdfArrayBuffer);
+        Buffer.from(
+          pdfArrayBuffer
+        );
 
       console.log(
         "✅ PDF generated."
       );
 
-      // ----------------------------------------------
+      // --------------------------------------------------
       // SAFE FILE NAME
-      // ----------------------------------------------
+      // --------------------------------------------------
 
       const safeName =
         String(data.clientName)
@@ -1730,53 +1551,19 @@ app.post(
       const fileName =
         `PunjabHouse-Booking-${safeName}.pdf`;
 
-      // ----------------------------------------------
+      // --------------------------------------------------
       // SEND EMAIL
-      // ----------------------------------------------
+      // --------------------------------------------------
 
-      console.log(
-        "📧 Sending booking email..."
+      await sendBookingEmail(
+        data,
+        pdfBuffer,
+        fileName
       );
 
-      try {
-        await sendBookingEmail(
-          data,
-          pdfBuffer,
-          fileName
-        );
-
-        console.log(
-          "✅ Booking email sent successfully."
-        );
-      } catch (emailError) {
-        console.error(
-          "❌ EMAIL SEND FAILED"
-        );
-
-        console.error(
-          "Code:",
-          emailError.code || "UNKNOWN"
-        );
-
-        console.error(
-          "Message:",
-          emailError.message ||
-            "Unknown error"
-        );
-
-        return res.status(503).json({
-          success: false,
-
-          message:
-            "Booking was received, but the email service is currently unavailable. Please try again later.",
-
-          error:
-            process.env.NODE_ENV ===
-            "production"
-              ? undefined
-              : emailError.message,
-        });
-      }
+      console.log(
+        "✅ Booking email sent successfully."
+      );
 
       console.log(
         "======================================"
@@ -1784,24 +1571,44 @@ app.post(
 
       return res.status(200).json({
         success: true,
-
         message:
           "Booking submitted successfully.",
       });
 
     } catch (error) {
       console.error(
-        "❌ Booking submission error:"
+        "======================================"
       );
 
-      console.error(error);
+      console.error(
+        "❌ BOOKING ERROR"
+      );
+
+      console.error(
+        "Code:",
+        error.code ||
+          "UNKNOWN"
+      );
+
+      console.error(
+        "Message:",
+        error.message ||
+          "Unknown error"
+      );
+
+      console.error(
+        "Full error:",
+        error
+      );
+
+      console.error(
+        "======================================"
+      );
 
       return res.status(500).json({
         success: false,
-
         message:
           "Unable to process booking.",
-
         error:
           process.env.NODE_ENV ===
           "production"
@@ -1827,13 +1634,12 @@ app.get(
 
       status: "online",
 
-      railway:
-        RAILWAY_URL,
+      emailProvider:
+        "Resend",
 
       emailConfigured:
         Boolean(
-          process.env.GMAIL_USER &&
-          process.env.GMAIL_APP_PASSWORD &&
+          process.env.RESEND_API_KEY &&
           process.env.ADMIN_EMAIL
         ),
 
@@ -1849,59 +1655,40 @@ app.get(
 app.get(
   "/api/email-status",
   async (req, res) => {
-    if (!transporter) {
+    const configured =
+      Boolean(
+        process.env.RESEND_API_KEY &&
+        process.env.ADMIN_EMAIL
+      );
+
+    if (!configured) {
       return res.status(503).json({
         success: false,
 
         emailConfigured: false,
 
+        provider: "Resend",
+
         message:
-          "Email transporter is not configured.",
+          "Resend email service is not configured.",
       });
     }
 
-    try {
-      await transporter.verify();
+    return res.status(200).json({
+      success: true,
 
-      return res.status(200).json({
-        success: true,
+      emailConfigured: true,
 
-        emailConfigured: true,
+      provider: "Resend",
 
-        smtp:
-          "Gmail SMTP is reachable.",
-
-        message:
-          "Email service is working.",
-      });
-
-    } catch (error) {
-      console.error(
-        "❌ Email status check failed:",
-        error.message
-      );
-
-      return res.status(503).json({
-        success: false,
-
-        emailConfigured: true,
-
-        smtp:
-          "Gmail SMTP is not reachable.",
-
-        code:
-          error.code || "UNKNOWN",
-
-        message:
-          error.message ||
-          "SMTP connection failed.",
-      });
-    }
+      message:
+        "Resend email service is configured.",
+    });
   }
 );
 
 // ======================================================
-// 404 HANDLER
+// 404
 // ======================================================
 
 app.use(
@@ -1916,7 +1703,7 @@ app.use(
 );
 
 // ======================================================
-// GLOBAL ERROR HANDLER
+// GLOBAL ERROR
 // ======================================================
 
 app.use(
@@ -1957,27 +1744,23 @@ app.listen(
     );
 
     console.log(
-      "🚀 Punjab House API started"
+      `🚀 Punjab House API running on port ${PORT}`
     );
 
     console.log(
-      `🌐 Railway URL: ${RAILWAY_URL}`
+      "🌐 Railway server listening on 0.0.0.0"
     );
 
     console.log(
-      `🚀 Server running on port ${PORT}`
+      `🌍 Frontend: ${FRONTEND_URL}`
     );
 
     console.log(
-      `🌐 Listening on 0.0.0.0:${PORT}`
+      "📧 Email provider: Resend"
     );
 
     console.log(
       "======================================"
     );
-
-    // Do not block server startup
-    // while checking Gmail.
-    verifyEmail();
   }
 );
