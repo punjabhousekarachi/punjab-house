@@ -376,12 +376,12 @@ export default function AboutPage() {
               <div className="overflow-hidden rounded-[2rem] shadow-2xl">
 
                 <img
-                  src="https://crystalpng.com/wp-content/uploads/2025/11/Maryam-Nawaz-PNG.png"
+                  src="https://static.india.com/wp-content/uploads/2024/02/QT-Maryam-Nawaz-Sharif.jpg?impolicy=Medium_Widthonly&w=200&h=400"
                   alt="Hon'ble Chief Minister Punjab Maryam Nawaz Sharif"
                   className="
                     w-full
-                    h-[420px]
-                    md:h-[520px]
+                    h-[120px]
+                    md:h-[920px]
                     object-cover
                     object-top
                     transition-transform

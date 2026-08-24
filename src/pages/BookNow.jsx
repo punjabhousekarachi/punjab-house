@@ -14,11 +14,11 @@ import {
 } from "lucide-react";
 
 // =========================================================
-// LIVE BACKEND
+// LIVE BACKEND - RAILWAY
 // =========================================================
 
 const API_URL =
-  "https://punjab-house-api1.bonto.run";
+  "https://punjab-house-production.up.railway.app";
 
 // =========================================================
 // INITIAL FORM
@@ -63,31 +63,25 @@ const eventTypes = [
 ];
 
 export default function BookNow() {
-  const [form, setForm] =
-    useState(initialForm);
+  const [form, setForm] = useState(initialForm);
 
-  const [submitting, setSubmitting] =
-    useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [success, setSuccess] =
-    useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
-  // Today's date
-  const today = new Date()
-    .toISOString()
-    .split("T")[0];
+  // =======================================================
+  // TODAY'S DATE
+  // =======================================================
+
+  const today = new Date().toISOString().split("T")[0];
 
   // =======================================================
   // UPDATE FIELD
   // =======================================================
 
-  const updateField = (
-    field,
-    value
-  ) => {
+  const updateField = (field, value) => {
     setForm((prev) => ({
       ...prev,
       [field]: value,
@@ -98,9 +92,7 @@ export default function BookNow() {
   // ROOM CHARGES
   // =======================================================
 
-  const calculateRoomCharges = (
-    rooms
-  ) => {
+  const calculateRoomCharges = (rooms) => {
     const count = Number(rooms);
 
     if (!count || count < 1) {
@@ -110,13 +102,8 @@ export default function BookNow() {
     return `Rs. ${(count * 5000).toLocaleString()}/-`;
   };
 
-  const handleRoomsChange = (
-    value
-  ) => {
-    updateField(
-      "rooms",
-      value
-    );
+  const handleRoomsChange = (value) => {
+    updateField("rooms", value);
 
     updateField(
       "roomCharges",
@@ -129,19 +116,13 @@ export default function BookNow() {
   // Allows normal name/designation characters
   // =======================================================
 
-  const handleClientNameChange = (
-    value
-  ) => {
-    const cleaned =
-      value.replace(
-        /[^a-zA-Z\s.,/&'()-]/g,
-        ""
-      );
-
-    updateField(
-      "clientName",
-      cleaned
+  const handleClientNameChange = (value) => {
+    const cleaned = value.replace(
+      /[^a-zA-Z\s.,/&'()-]/g,
+      ""
     );
+
+    updateField("clientName", cleaned);
   };
 
   // =======================================================
@@ -152,19 +133,14 @@ export default function BookNow() {
   // 42101-1234567-1
   // =======================================================
 
-  const handleCNICChange = (
-    value
-  ) => {
-    let cleaned =
-      value.replace(/\D/g, "");
+  const handleCNICChange = (value) => {
+    let cleaned = value.replace(/\D/g, "");
 
     if (cleaned.length > 13) {
-      cleaned =
-        cleaned.slice(0, 13);
+      cleaned = cleaned.slice(0, 13);
     }
 
-    let formatted =
-      cleaned;
+    let formatted = cleaned;
 
     if (
       cleaned.length > 5 &&
@@ -185,10 +161,7 @@ export default function BookNow() {
         cleaned.slice(12);
     }
 
-    updateField(
-      "cnic",
-      formatted
-    );
+    updateField("cnic", formatted);
   };
 
   // =======================================================
@@ -196,28 +169,20 @@ export default function BookNow() {
   // NUMBERS ONLY
   // =======================================================
 
-  const handlePhoneChange = (
-    value
-  ) => {
-    const numbersOnly =
-      value.replace(
-        /[^0-9]/g,
-        ""
-      );
-
-    updateField(
-      "contactNo",
-      numbersOnly
+  const handlePhoneChange = (value) => {
+    const numbersOnly = value.replace(
+      /[^0-9]/g,
+      ""
     );
+
+    updateField("contactNo", numbersOnly);
   };
 
   // =======================================================
   // SUBMIT
   // =======================================================
 
-  const handleSubmit = async (
-    e
-  ) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     setError("");
@@ -233,10 +198,7 @@ export default function BookNow() {
       return;
     }
 
-    if (
-      form.eventDate <
-      today
-    ) {
+    if (form.eventDate < today) {
       setError(
         "Please select today or a future event date."
       );
@@ -258,9 +220,7 @@ export default function BookNow() {
     // EVENT TIMING
     // -----------------------------------------------------
 
-    if (
-      !form.eventTiming.trim()
-    ) {
+    if (!form.eventTiming.trim()) {
       setError(
         "Please enter the event timing."
       );
@@ -271,27 +231,21 @@ export default function BookNow() {
     // AGREEMENTS
     // -----------------------------------------------------
 
-    if (
-      !form.lawnRentAgreement
-    ) {
+    if (!form.lawnRentAgreement) {
       setError(
         "Please accept the Lawn Rent agreement."
       );
       return;
     }
 
-    if (
-      !form.maintenanceAgreement
-    ) {
+    if (!form.maintenanceAgreement) {
       setError(
         "Please accept the Maintenance Charges agreement."
       );
       return;
     }
 
-    if (
-      !form.advanceAgreement
-    ) {
+    if (!form.advanceAgreement) {
       setError(
         "Please accept the Advance Security agreement."
       );
@@ -313,9 +267,7 @@ export default function BookNow() {
     // CLIENT NAME
     // -----------------------------------------------------
 
-    if (
-      !form.clientName.trim()
-    ) {
+    if (!form.clientName.trim()) {
       setError(
         "Please enter the client name."
       );
@@ -323,8 +275,7 @@ export default function BookNow() {
     }
 
     if (
-      form.clientName.trim()
-        .length < 2
+      form.clientName.trim().length < 2
     ) {
       setError(
         "Client name must contain at least 2 characters."
@@ -339,11 +290,7 @@ export default function BookNow() {
     const cnicRegex =
       /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
 
-    if (
-      !cnicRegex.test(
-        form.cnic
-      )
-    ) {
+    if (!cnicRegex.test(form.cnic)) {
       setError(
         "Please enter a valid CNIC, for example 42101-1234567-1."
       );
@@ -357,11 +304,7 @@ export default function BookNow() {
     const phoneRegex =
       /^[0-9]{10,15}$/;
 
-    if (
-      !phoneRegex.test(
-        form.contactNo
-      )
-    ) {
+    if (!phoneRegex.test(form.contactNo)) {
       setError(
         "Please enter a valid contact number using numbers only."
       );
@@ -373,8 +316,7 @@ export default function BookNow() {
     // -----------------------------------------------------
 
     if (
-      form.address.trim()
-        .length < 10
+      form.address.trim().length < 10
     ) {
       setError(
         "Please enter your complete address."
@@ -386,9 +328,7 @@ export default function BookNow() {
     // TERMS
     // -----------------------------------------------------
 
-    if (
-      !form.termsAccepted
-    ) {
+    if (!form.termsAccepted) {
       setError(
         "Please accept the terms and conditions before submitting."
       );
@@ -402,28 +342,24 @@ export default function BookNow() {
     setSubmitting(true);
 
     try {
-      const response =
-        await fetch(
-          `${API_URL}/api/bookings`,
-          {
-            method: "POST",
+      const response = await fetch(
+        `${API_URL}/api/bookings`,
+        {
+          method: "POST",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
 
-            body: JSON.stringify(
-              form
-            ),
-          }
-        );
+          body: JSON.stringify(form),
+        }
+      );
 
       let result;
 
       try {
-        result =
-          await response.json();
+        result = await response.json();
       } catch {
         throw new Error(
           "The server returned an invalid response."
@@ -440,12 +376,9 @@ export default function BookNow() {
       // Successful booking
       setSuccess(true);
 
-      setForm(
-        initialForm
-      );
+      setForm(initialForm);
 
       setError("");
-
     } catch (err) {
       console.error(
         "Booking submission error:",
@@ -456,7 +389,6 @@ export default function BookNow() {
         err.message ||
           "Unable to submit booking. Please try again."
       );
-
     } finally {
       setSubmitting(false);
     }
@@ -479,17 +411,17 @@ export default function BookNow() {
   if (success) {
     return (
       <section className="min-h-screen bg-slate-50 py-24 px-5">
-
-        <div className="
-          max-w-2xl
-          mx-auto
-          bg-white
-          rounded-3xl
-          shadow-xl
-          p-10
-          text-center
-        ">
-
+        <div
+          className="
+            max-w-2xl
+            mx-auto
+            bg-white
+            rounded-3xl
+            shadow-xl
+            p-10
+            text-center
+          "
+        >
           <CheckCircle2
             className="
               w-20
@@ -499,31 +431,37 @@ export default function BookNow() {
             "
           />
 
-          <h1 className="
-            text-3xl
-            font-bold
-            text-slate-900
-            mt-6
-          ">
+          <h1
+            className="
+              text-3xl
+              font-bold
+              text-slate-900
+              mt-6
+            "
+          >
             Booking Submitted!
           </h1>
 
-          <p className="
-            text-slate-500
-            mt-3
-            leading-relaxed
-          ">
+          <p
+            className="
+              text-slate-500
+              mt-3
+              leading-relaxed
+            "
+          >
             Your booking request has been
             sent successfully. Our team will
             review your information and contact
             you.
           </p>
 
-          <p className="
-            text-sm
-            text-slate-400
-            mt-3
-          ">
+          <p
+            className="
+              text-sm
+              text-slate-400
+              mt-3
+            "
+          >
             The completed booking form has been
             sent to Punjab House as a PDF attachment.
           </p>
@@ -548,15 +486,11 @@ export default function BookNow() {
               transition
             "
           >
-            <FileText
-              className="w-4 h-4"
-            />
+            <FileText className="w-4 h-4" />
 
             Submit Another Booking
           </button>
-
         </div>
-
       </section>
     );
   }
@@ -566,60 +500,68 @@ export default function BookNow() {
   // =======================================================
 
   return (
-    <section className="
-      min-h-screen
-      bg-slate-50
-      py-16
-      sm:py-24
-    ">
-
-      <div className="
-        max-w-5xl
-        mx-auto
-        px-5
-        sm:px-8
-      ">
-
+    <section
+      className="
+        min-h-screen
+        bg-slate-50
+        py-16
+        sm:py-24
+      "
+    >
+      <div
+        className="
+          max-w-5xl
+          mx-auto
+          px-5
+          sm:px-8
+        "
+      >
         {/* =================================================
             HEADER
         ================================================= */}
 
-        <div className="
-          text-center
-          max-w-3xl
-          mx-auto
-        ">
-
-          <span className="
-            text-[#00c874]
-            font-semibold
-            text-xs
-            tracking-[0.25em]
-            uppercase
-          ">
+        <div
+          className="
+            text-center
+            max-w-3xl
+            mx-auto
+          "
+        >
+          <span
+            className="
+              text-[#00c874]
+              font-semibold
+              text-xs
+              tracking-[0.25em]
+              uppercase
+            "
+          >
             Reservation
           </span>
 
-          <h1 className="
-            text-4xl
-            sm:text-5xl
-            font-bold
-            text-slate-900
-            mt-3
-          ">
+          <h1
+            className="
+              text-4xl
+              sm:text-5xl
+              font-bold
+              text-slate-900
+              mt-3
+            "
+          >
             Book Your Event
           </h1>
 
-          <p className="
-            text-slate-500
-            mt-4
-            leading-relaxed
-          ">
+          <p
+            className="
+              text-slate-500
+              mt-4
+              leading-relaxed
+            "
+          >
             Complete the booking form below
             and our Punjab House team will
             review your request.
           </p>
-
         </div>
 
         {/* =================================================
@@ -639,71 +581,73 @@ export default function BookNow() {
             sm:p-10
           "
         >
-
           {/* =================================================
               EVENT INFORMATION
           ================================================= */}
 
           <div>
-
-            <div className="
-              flex
-              items-center
-              gap-3
-            ">
-
-              <div className="
-                w-11
-                h-11
-                rounded-xl
-                bg-[#00c874]/10
-                text-[#00c874]
+            <div
+              className="
                 flex
                 items-center
-                justify-center
-              ">
-                <Calendar
-                  className="w-5 h-5"
-                />
+                gap-3
+              "
+            >
+              <div
+                className="
+                  w-11
+                  h-11
+                  rounded-xl
+                  bg-[#00c874]/10
+                  text-[#00c874]
+                  flex
+                  items-center
+                  justify-center
+                "
+              >
+                <Calendar className="w-5 h-5" />
               </div>
 
               <div>
-
-                <h2 className="
-                  text-xl
-                  font-bold
-                  text-slate-900
-                ">
+                <h2
+                  className="
+                    text-xl
+                    font-bold
+                    text-slate-900
+                  "
+                >
                   Event Information
                 </h2>
 
-                <p className="
-                  text-sm
-                  text-slate-500
-                ">
+                <p
+                  className="
+                    text-sm
+                    text-slate-500
+                  "
+                >
                   Tell us about your event.
                 </p>
-
               </div>
-
             </div>
 
-            <div className="
-              grid
-              md:grid-cols-2
-              gap-5
-              mt-6
-            ">
-
+            <div
+              className="
+                grid
+                md:grid-cols-2
+                gap-5
+                mt-6
+              "
+            >
               {/* DATE */}
 
               <div>
-
-                <label className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                ">
+                <label
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
                   Date of Event *
                 </label>
 
@@ -718,22 +662,20 @@ export default function BookNow() {
                       e.target.value
                     )
                   }
-                  className={
-                    inputClass
-                  }
+                  className={inputClass}
                 />
-
               </div>
 
               {/* EVENT */}
 
               <div>
-
-                <label className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                ">
+                <label
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
                   Event *
                 </label>
 
@@ -746,11 +688,8 @@ export default function BookNow() {
                       e.target.value
                     )
                   }
-                  className={
-                    inputClass
-                  }
+                  className={inputClass}
                 >
-
                   <option value="">
                     Select event
                   </option>
@@ -765,27 +704,23 @@ export default function BookNow() {
                       </option>
                     )
                   )}
-
                 </select>
-
               </div>
 
               {/* TIMING */}
 
               <div>
-
-                <label className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                ">
+                <label
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
                   Event Timing *
                 </label>
 
-                <div className="
-                  relative
-                ">
-
+                <div className="relative">
                   <Clock
                     className="
                       absolute
@@ -801,9 +736,7 @@ export default function BookNow() {
                   <input
                     required
                     type="text"
-                    value={
-                      form.eventTiming
-                    }
+                    value={form.eventTiming}
                     onChange={(e) =>
                       updateField(
                         "eventTiming",
@@ -816,84 +749,77 @@ export default function BookNow() {
                     `}
                     placeholder="07:00 PM - 11:30 PM"
                   />
-
                 </div>
-
               </div>
-
             </div>
-
           </div>
 
           {/* =================================================
               VENUE CHARGES
           ================================================= */}
 
-          <div className="
-            border-t
-            border-slate-100
-            mt-10
-            pt-10
-          ">
-
-            <div className="
-              flex
-              items-center
-              gap-3
-            ">
-
-              <div className="
-                w-11
-                h-11
-                rounded-xl
-                bg-[#00c874]/10
-                text-[#00c874]
+          <div
+            className="
+              border-t
+              border-slate-100
+              mt-10
+              pt-10
+            "
+          >
+            <div
+              className="
                 flex
                 items-center
-                justify-center
-              ">
-
-                <CreditCard
-                  className="w-5 h-5"
-                />
-
+                gap-3
+              "
+            >
+              <div
+                className="
+                  w-11
+                  h-11
+                  rounded-xl
+                  bg-[#00c874]/10
+                  text-[#00c874]
+                  flex
+                  items-center
+                  justify-center
+                "
+              >
+                <CreditCard className="w-5 h-5" />
               </div>
 
               <div>
-
-                <h2 className="
-                  text-xl
-                  font-bold
-                  text-slate-900
-                ">
+                <h2
+                  className="
+                    text-xl
+                    font-bold
+                    text-slate-900
+                  "
+                >
                   Venue Charges
                 </h2>
 
-                <p className="
-                  text-sm
-                  text-slate-500
-                ">
+                <p
+                  className="
+                    text-sm
+                    text-slate-500
+                  "
+                >
                   Review the applicable charges
                   and agreements.
                 </p>
-
               </div>
-
             </div>
 
-            <div className="
-              space-y-4
-              mt-6
-            ">
-
+            <div
+              className="
+                space-y-4
+                mt-6
+              "
+            >
               {/* LAWN RENT */}
 
-              <label
-                className={
-                  agreementClass
-                }
-              >
-
+              <label className={agreementClass}>
                 <input
                   type="checkbox"
                   checked={
@@ -914,36 +840,32 @@ export default function BookNow() {
                 />
 
                 <div>
-
-                  <div className="
-                    font-semibold
-                    text-slate-900
-                  ">
+                  <div
+                    className="
+                      font-semibold
+                      text-slate-900
+                    "
+                  >
                     Lawn Rent —{" "}
                     {form.lawnRent}
                   </div>
 
-                  <p className="
-                    text-sm
-                    text-slate-500
-                    mt-1
-                  ">
+                  <p
+                    className="
+                      text-sm
+                      text-slate-500
+                      mt-1
+                    "
+                  >
                     I agree to the Lawn Rent
                     terms and conditions.
                   </p>
-
                 </div>
-
               </label>
 
               {/* MAINTENANCE */}
 
-              <label
-                className={
-                  agreementClass
-                }
-              >
-
+              <label className={agreementClass}>
                 <input
                   type="checkbox"
                   checked={
@@ -964,36 +886,32 @@ export default function BookNow() {
                 />
 
                 <div>
-
-                  <div className="
-                    font-semibold
-                    text-slate-900
-                  ">
+                  <div
+                    className="
+                      font-semibold
+                      text-slate-900
+                    "
+                  >
                     Maintenance Charges —{" "}
                     {form.maintenanceCharges}
                   </div>
 
-                  <p className="
-                    text-sm
-                    text-slate-500
-                    mt-1
-                  ">
+                  <p
+                    className="
+                      text-sm
+                      text-slate-500
+                      mt-1
+                    "
+                  >
                     I agree to the maintenance
                     charges and agreement.
                   </p>
-
                 </div>
-
               </label>
 
               {/* SECURITY */}
 
-              <label
-                className={
-                  agreementClass
-                }
-              >
-
+              <label className={agreementClass}>
                 <input
                   type="checkbox"
                   checked={
@@ -1014,104 +932,106 @@ export default function BookNow() {
                 />
 
                 <div>
-
-                  <div className="
-                    font-semibold
-                    text-slate-900
-                  ">
+                  <div
+                    className="
+                      font-semibold
+                      text-slate-900
+                    "
+                  >
                     Advance / Refundable Security —{" "}
                     {form.advanceSecurity}
                   </div>
 
-                  <p className="
-                    text-sm
-                    text-slate-500
-                    mt-1
-                  ">
+                  <p
+                    className="
+                      text-sm
+                      text-slate-500
+                      mt-1
+                    "
+                  >
                     I agree to the advance
                     security terms.
                   </p>
-
                 </div>
-
               </label>
-
             </div>
-
           </div>
 
           {/* =================================================
               ROOMS
           ================================================= */}
 
-          <div className="
-            border-t
-            border-slate-100
-            mt-10
-            pt-10
-          ">
-
-            <div className="
-              flex
-              items-center
-              gap-3
-            ">
-
-              <div className="
-                w-11
-                h-11
-                rounded-xl
-                bg-[#00c874]/10
-                text-[#00c874]
+          <div
+            className="
+              border-t
+              border-slate-100
+              mt-10
+              pt-10
+            "
+          >
+            <div
+              className="
                 flex
                 items-center
-                justify-center
-              ">
-
-                <DoorOpen
-                  className="w-5 h-5"
-                />
-
+                gap-3
+              "
+            >
+              <div
+                className="
+                  w-11
+                  h-11
+                  rounded-xl
+                  bg-[#00c874]/10
+                  text-[#00c874]
+                  flex
+                  items-center
+                  justify-center
+                "
+              >
+                <DoorOpen className="w-5 h-5" />
               </div>
 
               <div>
-
-                <h2 className="
-                  text-xl
-                  font-bold
-                  text-slate-900
-                ">
+                <h2
+                  className="
+                    text-xl
+                    font-bold
+                    text-slate-900
+                  "
+                >
                   Rooms
                 </h2>
 
-                <p className="
-                  text-sm
-                  text-slate-500
-                ">
+                <p
+                  className="
+                    text-sm
+                    text-slate-500
+                  "
+                >
                   Maximum 2 rooms available.
                   Rs. 5,000 per room.
                 </p>
-
               </div>
-
             </div>
 
-            <div className="
-              grid
-              md:grid-cols-2
-              gap-5
-              mt-6
-            ">
-
+            <div
+              className="
+                grid
+                md:grid-cols-2
+                gap-5
+                mt-6
+              "
+            >
               {/* ROOMS */}
 
               <div>
-
-                <label className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                ">
+                <label
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
                   No. of Rooms *
                 </label>
 
@@ -1123,11 +1043,8 @@ export default function BookNow() {
                       e.target.value
                     )
                   }
-                  className={
-                    inputClass
-                  }
+                  className={inputClass}
                 >
-
                   <option
                     value=""
                     disabled
@@ -1142,115 +1059,110 @@ export default function BookNow() {
                   <option value="2">
                     2 Rooms
                   </option>
-
                 </select>
-
               </div>
 
               {/* ROOM CHARGES */}
 
               <div>
-
-                <label className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                ">
+                <label
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
                   Room Charges
                 </label>
 
                 <input
                   readOnly
-                  value={
-                    form.roomCharges
-                  }
+                  value={form.roomCharges}
                   className={`
                     ${inputClass}
                     bg-slate-50
                   `}
                   placeholder="Automatically calculated"
                 />
-
               </div>
-
             </div>
-
           </div>
 
           {/* =================================================
               CLIENT INFORMATION
           ================================================= */}
 
-          <div className="
-            border-t
-            border-slate-100
-            mt-10
-            pt-10
-          ">
-
-            <div className="
-              flex
-              items-center
-              gap-3
-            ">
-
-              <div className="
-                w-11
-                h-11
-                rounded-xl
-                bg-[#00c874]/10
-                text-[#00c874]
+          <div
+            className="
+              border-t
+              border-slate-100
+              mt-10
+              pt-10
+            "
+          >
+            <div
+              className="
                 flex
                 items-center
-                justify-center
-              ">
-
-                <User
-                  className="w-5 h-5"
-                />
-
+                gap-3
+              "
+            >
+              <div
+                className="
+                  w-11
+                  h-11
+                  rounded-xl
+                  bg-[#00c874]/10
+                  text-[#00c874]
+                  flex
+                  items-center
+                  justify-center
+                "
+              >
+                <User className="w-5 h-5" />
               </div>
 
               <div>
-
-                <h2 className="
-                  text-xl
-                  font-bold
-                  text-slate-900
-                ">
+                <h2
+                  className="
+                    text-xl
+                    font-bold
+                    text-slate-900
+                  "
+                >
                   Client Information
                 </h2>
 
-                <p className="
-                  text-sm
-                  text-slate-500
-                ">
+                <p
+                  className="
+                    text-sm
+                    text-slate-500
+                  "
+                >
                   Enter your personal and
                   contact information.
                 </p>
-
               </div>
-
             </div>
 
-            <div className="
-              grid
-              md:grid-cols-2
-              gap-5
-              mt-6
-            ">
-
+            <div
+              className="
+                grid
+                md:grid-cols-2
+                gap-5
+                mt-6
+              "
+            >
               {/* NAME */}
 
-              <div className="
-                md:col-span-2
-              ">
-
-                <label className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                ">
+              <div className="md:col-span-2">
+                <label
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
                   Name of Client & Designation / C/o *
                 </label>
 
@@ -1259,31 +1171,27 @@ export default function BookNow() {
                   type="text"
                   minLength={2}
                   maxLength={80}
-                  value={
-                    form.clientName
-                  }
+                  value={form.clientName}
                   onChange={(e) =>
                     handleClientNameChange(
                       e.target.value
                     )
                   }
-                  className={
-                    inputClass
-                  }
+                  className={inputClass}
                   placeholder="Enter client name and designation / C/o"
                 />
-
               </div>
 
               {/* CNIC */}
 
               <div>
-
-                <label className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                ">
+                <label
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
                   C.N.I. No. *
                 </label>
 
@@ -1299,30 +1207,25 @@ export default function BookNow() {
                   }
                   pattern="[0-9]{5}-[0-9]{7}-[0-9]{1}"
                   maxLength={15}
-                  className={
-                    inputClass
-                  }
+                  className={inputClass}
                   placeholder="42101-1234567-1"
                 />
-
               </div>
 
               {/* CONTACT */}
 
               <div>
-
-                <label className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                ">
+                <label
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
                   Contact No. *
                 </label>
 
-                <div className="
-                  relative
-                ">
-
+                <div className="relative">
                   <Phone
                     className="
                       absolute
@@ -1342,9 +1245,7 @@ export default function BookNow() {
                     pattern="[0-9]*"
                     minLength={10}
                     maxLength={15}
-                    value={
-                      form.contactNo
-                    }
+                    value={form.contactNo}
                     onChange={(e) =>
                       handlePhoneChange(
                         e.target.value
@@ -1356,37 +1257,33 @@ export default function BookNow() {
                     `}
                     placeholder="03001234567"
                   />
-
                 </div>
 
-                <p className="
-                  text-xs
-                  text-slate-400
-                  mt-2
-                ">
+                <p
+                  className="
+                    text-xs
+                    text-slate-400
+                    mt-2
+                  "
+                >
                   Enter numbers only.
                 </p>
-
               </div>
 
               {/* ADDRESS */}
 
-              <div className="
-                md:col-span-2
-              ">
-
-                <label className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                ">
+              <div className="md:col-span-2">
+                <label
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
                   Address *
                 </label>
 
-                <div className="
-                  relative
-                ">
-
+                <div className="relative">
                   <MapPin
                     className="
                       absolute
@@ -1403,9 +1300,7 @@ export default function BookNow() {
                     minLength={10}
                     maxLength={300}
                     rows={3}
-                    value={
-                      form.address
-                    }
+                    value={form.address}
                     onChange={(e) =>
                       updateField(
                         "address",
@@ -1419,43 +1314,39 @@ export default function BookNow() {
                     `}
                     placeholder="Enter your complete address"
                   />
-
                 </div>
-
               </div>
-
             </div>
-
           </div>
 
           {/* =================================================
               TERMS
           ================================================= */}
 
-          <div className="
-            border-t
-            border-slate-100
-            mt-10
-            pt-10
-          ">
-
-            <label className="
-              flex
-              items-start
-              gap-3
-              rounded-2xl
-              border
-              border-[#00c874]/20
-              bg-[#00c874]/5
-              p-5
-              cursor-pointer
-            ">
-
+          <div
+            className="
+              border-t
+              border-slate-100
+              mt-10
+              pt-10
+            "
+          >
+            <label
+              className="
+                flex
+                items-start
+                gap-3
+                rounded-2xl
+                border
+                border-[#00c874]/20
+                bg-[#00c874]/5
+                p-5
+                cursor-pointer
+              "
+            >
               <input
                 type="checkbox"
-                checked={
-                  form.termsAccepted
-                }
+                checked={form.termsAccepted}
                 onChange={(e) =>
                   updateField(
                     "termsAccepted",
@@ -1471,30 +1362,30 @@ export default function BookNow() {
               />
 
               <div>
-
-                <div className="
-                  font-semibold
-                  text-slate-900
-                ">
+                <div
+                  className="
+                    font-semibold
+                    text-slate-900
+                  "
+                >
                   I have read and accepted all
                   terms and conditions *
                 </div>
 
-                <p className="
-                  text-sm
-                  text-slate-500
-                  mt-1
-                ">
+                <p
+                  className="
+                    text-sm
+                    text-slate-500
+                    mt-1
+                  "
+                >
                   By submitting this booking request,
                   I confirm that the information provided
                   is correct and that I accept the Punjab
                   House booking terms.
                 </p>
-
               </div>
-
             </label>
-
           </div>
 
           {/* =================================================
@@ -1502,17 +1393,19 @@ export default function BookNow() {
           ================================================= */}
 
           {error && (
-            <div className="
-              mt-6
-              rounded-xl
-              bg-red-50
-              border
-              border-red-200
-              text-red-700
-              px-4
-              py-3
-              text-sm
-            ">
+            <div
+              className="
+                mt-6
+                rounded-xl
+                bg-red-50
+                border
+                border-red-200
+                text-red-700
+                px-4
+                py-3
+                text-sm
+              "
+            >
               {error}
             </div>
           )}
@@ -1523,9 +1416,7 @@ export default function BookNow() {
 
           <button
             type="submit"
-            disabled={
-              submitting
-            }
+            disabled={submitting}
             className="
               mt-8
               w-full
@@ -1548,7 +1439,6 @@ export default function BookNow() {
               shadow-[#00c874]/20
             "
           >
-
             {submitting ? (
               <>
                 <Loader2
@@ -1563,30 +1453,26 @@ export default function BookNow() {
               </>
             ) : (
               <>
-                <Send
-                  className="w-5 h-5"
-                />
+                <Send className="w-5 h-5" />
 
                 Submit Booking
               </>
             )}
-
           </button>
 
-          <p className="
-            text-center
-            text-xs
-            text-slate-400
-            mt-4
-          ">
+          <p
+            className="
+              text-center
+              text-xs
+              text-slate-400
+              mt-4
+            "
+          >
             Your booking information will be sent
             securely to Punjab House.
           </p>
-
         </form>
-
       </div>
-
     </section>
   );
 }
