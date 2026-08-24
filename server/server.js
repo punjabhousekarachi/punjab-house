@@ -12,7 +12,6 @@ dotenv.config();
 
 const app = express();
 
-// Railway provides PORT automatically
 const PORT = process.env.PORT || 5000;
 
 // ======================================================
@@ -35,8 +34,8 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests without an Origin header
-      // such as curl/Postman/server requests.
+      // Allow requests without Origin
+      // such as Postman or server requests.
       if (!origin) {
         return callback(null, true);
       }
@@ -358,9 +357,7 @@ function generateBookingPDF(data) {
   // SPACE
   // ====================================================
 
-  function ensureSpace(
-    height = 20
-  ) {
+  function ensureSpace(height = 20) {
     if (y + height > 270) {
       addNewPage();
     }
@@ -450,9 +447,7 @@ function generateBookingPDF(data) {
       multiline = false,
     } = options;
 
-    ensureSpace(
-      height + 7
-    );
+    ensureSpace(height + 7);
 
     doc.setTextColor(...TEXT);
 
@@ -533,8 +528,7 @@ function generateBookingPDF(data) {
     const gap = 6;
 
     const width =
-      (CONTENT_WIDTH - gap) /
-      2;
+      (CONTENT_WIDTH - gap) / 2;
 
     ensureSpace(28);
 
@@ -852,18 +846,14 @@ function generateBookingPDF(data) {
     "Review the applicable charges and agreements"
   );
 
+  // Lawn Rent
   drawAgreementBox(
     "Lawn Rent",
     data.lawnRent,
     data.lawnRentAgreement
   );
 
-  drawAgreementBox(
-    "Maintenance Charges",
-    data.maintenanceCharges,
-    data.maintenanceAgreement
-  );
-
+  // Advance Security
   drawAgreementBox(
     "Advance / Refundable Security",
     data.advanceSecurity,
@@ -1026,17 +1016,25 @@ function validateBooking(data) {
     return "Event timing is required.";
   }
 
+  // ====================================================
+  // LAWN RENT AGREEMENT
+  // ====================================================
+
   if (!data.lawnRentAgreement) {
     return "Lawn Rent agreement is required.";
   }
 
-  if (!data.maintenanceAgreement) {
-    return "Maintenance Charges agreement is required.";
-  }
+  // ====================================================
+  // ADVANCE SECURITY AGREEMENT
+  // ====================================================
 
   if (!data.advanceAgreement) {
     return "Advance Security agreement is required.";
   }
+
+  // ====================================================
+  // ROOMS
+  // ====================================================
 
   if (
     !["1", "2"].includes(
@@ -1045,6 +1043,10 @@ function validateBooking(data) {
   ) {
     return "Please select 1 or 2 rooms.";
   }
+
+  // ====================================================
+  // CLIENT NAME
+  // ====================================================
 
   if (
     !data.clientName ||
@@ -1060,6 +1062,10 @@ function validateBooking(data) {
     return "Client name must contain at least 2 characters.";
   }
 
+  // ====================================================
+  // CNIC
+  // ====================================================
+
   const cnicRegex =
     /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
 
@@ -1070,6 +1076,10 @@ function validateBooking(data) {
   ) {
     return "Invalid CNIC format. Use 00000-0000000-0.";
   }
+
+  // ====================================================
+  // PHONE
+  // ====================================================
 
   const phone =
     String(data.contactNo || "")
@@ -1082,6 +1092,10 @@ function validateBooking(data) {
     return "Invalid contact number.";
   }
 
+  // ====================================================
+  // ADDRESS
+  // ====================================================
+
   if (
     !data.address ||
     typeof data.address !== "string" ||
@@ -1089,6 +1103,10 @@ function validateBooking(data) {
   ) {
     return "Complete address is required.";
   }
+
+  // ====================================================
+  // TERMS
+  // ====================================================
 
   if (!data.termsAccepted) {
     return "Terms and conditions must be accepted.";
@@ -1105,6 +1123,7 @@ function createEmailHTML(data) {
   return `
 <!DOCTYPE html>
 <html>
+
 <head>
 <meta charset="UTF-8">
 <title>Punjab House Booking</title>
@@ -1168,68 +1187,77 @@ ${[
     "Client Name",
     data.clientName,
   ],
+
   [
     "Event Date",
     data.eventDate,
   ],
+
   [
     "Event",
     data.event,
   ],
+
   [
     "Event Timing",
     data.eventTiming,
   ],
+
   [
     "Lawn Rent",
     data.lawnRent,
   ],
+
   [
     "Lawn Rent Agreement",
     data.lawnRentAgreement
       ? "Accepted"
       : "Not Accepted",
   ],
-  [
-    "Maintenance Charges",
-    data.maintenanceCharges,
-  ],
-  [
-    "Maintenance Agreement",
-    data.maintenanceAgreement
-      ? "Accepted"
-      : "Not Accepted",
-  ],
+
   [
     "Advance Security",
     data.advanceSecurity,
   ],
+
   [
     "Advance Agreement",
     data.advanceAgreement
       ? "Accepted"
       : "Not Accepted",
   ],
+
   [
     "Rooms",
     data.rooms,
   ],
+
   [
     "Room Charges",
     data.roomCharges ||
       "Rs. 0/-",
   ],
+
   [
     "CNIC",
     data.cnic,
   ],
+
   [
     "Contact No.",
     data.contactNo,
   ],
+
   [
     "Address",
     data.address,
+  ],
+
+  [
+    "Terms & Conditions",
+    data.termsAccepted
+      ? "Accepted"
+      : "Not Accepted",
   ],
 ]
   .map(
@@ -1332,16 +1360,6 @@ async function sendBookingEmail(
     );
   }
 
-  // IMPORTANT:
-  //
-  // If your Resend account/domain is not verified,
-  // use onboarding@resend.dev as the sender.
-  //
-  // Once you verify your own domain in Resend,
-  // change this to something like:
-  //
-  // Punjab House <booking@yourdomain.com>
-
   const fromEmail =
     process.env.RESEND_FROM_EMAIL ||
     "onboarding@resend.dev";
@@ -1375,25 +1393,54 @@ async function sendBookingEmail(
 New Punjab House Booking
 
 Client Name: ${data.clientName}
+
 Event Date: ${data.eventDate}
+
 Event: ${data.event}
+
 Event Timing: ${data.eventTiming}
 
 Lawn Rent: ${data.lawnRent}
-Maintenance Charges: ${data.maintenanceCharges}
-Advance Security: ${data.advanceSecurity}
+
+Lawn Rent Agreement:
+${
+  data.lawnRentAgreement
+    ? "Accepted"
+    : "Not Accepted"
+}
+
+Advance Security:
+${data.advanceSecurity}
+
+Advance Security Agreement:
+${
+  data.advanceAgreement
+    ? "Accepted"
+    : "Not Accepted"
+}
 
 Rooms: ${data.rooms}
-Room Charges: ${
-        data.roomCharges ||
-        "Rs. 0/-"
-      }
+
+Room Charges:
+${
+  data.roomCharges ||
+  "Rs. 0/-"
+}
 
 CNIC: ${data.cnic}
-Contact: ${data.contactNo}
+
+Contact:
+${data.contactNo}
 
 Address:
 ${data.address}
+
+Terms & Conditions:
+${
+  data.termsAccepted
+    ? "Accepted"
+    : "Not Accepted"
+}
 `,
 
       html: createEmailHTML(data),
@@ -1456,9 +1503,9 @@ app.post(
     try {
       const data = req.body;
 
-      // --------------------------------------------------
+      // ==================================================
       // VALIDATE
-      // --------------------------------------------------
+      // ==================================================
 
       const validationError =
         validateBooking(data);
@@ -1476,9 +1523,9 @@ app.post(
         });
       }
 
-      // --------------------------------------------------
+      // ==================================================
       // CHECK RESEND
-      // --------------------------------------------------
+      // ==================================================
 
       if (
         !process.env.RESEND_API_KEY
@@ -1494,9 +1541,9 @@ app.post(
         });
       }
 
-      // --------------------------------------------------
+      // ==================================================
       // CHECK ADMIN EMAIL
-      // --------------------------------------------------
+      // ==================================================
 
       if (
         !process.env.ADMIN_EMAIL
@@ -1512,9 +1559,9 @@ app.post(
         });
       }
 
-      // --------------------------------------------------
+      // ==================================================
       // GENERATE PDF
-      // --------------------------------------------------
+      // ==================================================
 
       console.log(
         "📄 Generating PDF..."
@@ -1532,9 +1579,9 @@ app.post(
         "✅ PDF generated."
       );
 
-      // --------------------------------------------------
+      // ==================================================
       // SAFE FILE NAME
-      // --------------------------------------------------
+      // ==================================================
 
       const safeName =
         String(data.clientName)
@@ -1551,9 +1598,9 @@ app.post(
       const fileName =
         `PunjabHouse-Booking-${safeName}.pdf`;
 
-      // --------------------------------------------------
+      // ==================================================
       // SEND EMAIL
-      // --------------------------------------------------
+      // ==================================================
 
       await sendBookingEmail(
         data,
@@ -1607,8 +1654,10 @@ app.post(
 
       return res.status(500).json({
         success: false,
+
         message:
           "Unable to process booking.",
+
         error:
           process.env.NODE_ENV ===
           "production"

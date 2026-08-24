@@ -1,1670 +1,1190 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const dns = require("dns");
-const nodemailer = require("nodemailer");
-const { jsPDF } = require("jspdf");
+import React, { useState } from "react";
+import {
+  Calendar,
+  Clock,
+  DoorOpen,
+  User,
+  CreditCard,
+  MapPin,
+  Phone,
+  CheckCircle2,
+  Send,
+  Loader2,
+  FileText,
+  Building2,
+  ShieldCheck,
+} from "lucide-react";
 
 // ======================================================
-// ENVIRONMENT
+// RAILWAY BACKEND
 // ======================================================
 
-dotenv.config();
-
-// Prefer IPv4
-try {
-  dns.setDefaultResultOrder("ipv4first");
-} catch (error) {
-  console.log("⚠️ IPv4 DNS preference unavailable.");
-}
-
-const app = express();
-
-// Railway provides PORT automatically
-const PORT = process.env.PORT || 5000;
+const API_URL =
+  "https://punjab-house-production.up.railway.app";
 
 // ======================================================
-// FRONTEND URL
+// TERMS & CONDITIONS IMAGE
 // ======================================================
+//
+// Put your T&C image inside:
+//
+// public/terms-and-conditions.jpg
+//
+// Then it will automatically appear here.
+//
 
-const FRONTEND_URL =
-  "https://punjab-house-karachi.netlify.app";
-
-// ======================================================
-// CORS
-// ======================================================
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  FRONTEND_URL,
-];
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Postman / curl / server requests
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.log("⚠️ CORS blocked:", origin);
-
-      return callback(
-        new Error("Not allowed by CORS")
-      );
-    },
-
-    methods: ["GET", "POST", "OPTIONS"],
-
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-    ],
-
-    credentials: false,
-  })
-);
-
-// Explicit OPTIONS handling
-app.options("*", cors());
+const TERMS_IMAGE =
+  "/terms-and-conditions.jpg";
 
 // ======================================================
-// BODY PARSER
+// INITIAL FORM
 // ======================================================
 
-app.use(
-  express.json({
-    limit: "2mb",
-  })
-);
+const initialForm = {
+  eventDate: "",
+  event: "",
+  eventTiming: "",
 
-app.use(
-  express.urlencoded({
-    extended: true,
-    limit: "2mb",
-  })
-);
+  lawnRent: "Rs. 1,000,000/-",
+  lawnRentAgreement: false,
 
-// ======================================================
-// SERVER INFORMATION
-// ======================================================
+  advanceSecurity: "100,000/-",
+  advanceAgreement: false,
 
-console.log("======================================");
-console.log("Punjab House Karachi Booking API");
-console.log("======================================");
+  rooms: "1",
+  roomCharges: "Rs. 5,000/-",
 
-console.log(
-  "GMAIL_USER:",
-  process.env.GMAIL_USER ? "SET" : "MISSING"
-);
+  clientName: "",
+  cnic: "",
+  address: "",
+  contactNo: "",
 
-console.log(
-  "GMAIL_APP_PASSWORD:",
-  process.env.GMAIL_APP_PASSWORD
-    ? "SET"
-    : "MISSING"
-);
+  termsAccepted: false,
+};
 
-console.log(
-  "ADMIN_EMAIL:",
-  process.env.ADMIN_EMAIL
-    ? "SET"
-    : "MISSING"
-);
 
-console.log("PORT:", PORT);
+export default function BookNow() {
+  const [form, setForm] = useState(initialForm);
 
-console.log("======================================");
-// ======================================================
-// GMAIL TRANSPORTER
-// ======================================================
-
-let transporter = null;
-
-if (
-  process.env.GMAIL_USER &&
-  process.env.GMAIL_APP_PASSWORD
-) {
-  transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    requireTLS: true,
-
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-
-    // Force IPv4
-    family: 4,
-
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
-
-    tls: {
-      rejectUnauthorized: true,
-    },
-  });
-
-  console.log("📧 Gmail SMTP transporter created.");
-} else {
-  console.error(
-    "❌ Gmail SMTP transporter was NOT created."
-  );
-}
-// ======================================================
-// VERIFY EMAIL
-// ======================================================
-
-async function verifyEmail() {
-  if (!transporter) {
-    console.log(
-      "⚠️ SMTP verification skipped."
-    );
-
-    return false;
-  }
-
-  try {
-    console.log(
-      "📧 Testing Gmail SMTP connection..."
-    );
-
-    await transporter.verify();
-
-    console.log(
-      "✅ Gmail SMTP connection successful."
-    );
-
-    return true;
-  } catch (error) {
-    console.error(
-      "❌ Gmail SMTP connection failed."
-    );
-
-    console.error(
-      "Code:",
-      error.code || "UNKNOWN"
-    );
-
-    console.error(
-      "Message:",
-      error.message || "Unknown error"
-    );
-
-    console.log(
-      "⚠️ Server will continue running."
-    );
-
-    return false;
-  }
-}
-
-// ======================================================
-// ESCAPE HTML
-// ======================================================
-
-function escapeHTML(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-// ======================================================
-// PDF GENERATOR
-// ======================================================
-
-function generateBookingPDF(data) {
-  const doc = new jsPDF(
-    "p",
-    "mm",
-    "a4"
-  );
-
-  const GREEN = [0, 200, 116];
-  const DARK = [15, 23, 42];
-  const TEXT = [30, 41, 59];
-  const MUTED = [100, 116, 139];
-  const BORDER = [203, 213, 225];
-  const LIGHT = [248, 250, 252];
-  const GREEN_LIGHT = [236, 253, 245];
-  const RED_LIGHT = [255, 247, 247];
-  const WHITE = [255, 255, 255];
-
-  const PAGE_WIDTH = 210;
-  const LEFT = 15;
-  const RIGHT = 195;
-  const CONTENT_WIDTH = RIGHT - LEFT;
-
-  let y = 15;
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
 
   // ====================================================
-  // HEADER
+  // HANDLE INPUT
   // ====================================================
 
-  function drawPageHeader() {
-    doc.setFillColor(...DARK);
-
-    doc.rect(
-      0,
-      0,
-      PAGE_WIDTH,
-      35,
-      "F"
-    );
-
-    // Logo
-    doc.setFillColor(...GREEN);
-
-    doc.circle(
-      25,
-      17.5,
-      7,
-      "F"
-    );
-
-    doc.setTextColor(...WHITE);
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
-    doc.setFontSize(9);
-
-    doc.text(
-      "PH",
-      25,
-      20.2,
-      {
-        align: "center",
-      }
-    );
-
-    // Name
-    doc.setTextColor(...WHITE);
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
-    doc.setFontSize(15);
-
-    doc.text(
-      "Punjab House",
-      37,
-      15
-    );
-
-    doc.setTextColor(
-      148,
-      163,
-      184
-    );
-
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
-    doc.setFontSize(7);
-
-    doc.text(
-      "EVENT VENUE",
-      37,
-      22
-    );
-
-    // Right
-    doc.setTextColor(...GREEN);
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
-    doc.setFontSize(8);
-
-    doc.text(
-      "BOOKING REQUEST FORM",
-      RIGHT,
-      14,
-      {
-        align: "right",
-      }
-    );
-
-    doc.setTextColor(
-      203,
-      213,
-      225
-    );
-
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
-    doc.setFontSize(7);
-
-    doc.text(
-      "GOR-1, Bath Island, Clifton, Karachi",
-      RIGHT,
-      21,
-      {
-        align: "right",
-      }
-    );
-
-    y = 44;
-  }
-
-  // ====================================================
-  // FOOTER
-  // ====================================================
-
-  function drawFooter() {
-    doc.setDrawColor(...BORDER);
-
-    doc.setLineWidth(0.3);
-
-    doc.line(
-      LEFT,
-      280,
-      RIGHT,
-      280
-    );
-
-    doc.setTextColor(...MUTED);
-
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
-    doc.setFontSize(7);
-
-    doc.text(
-      "Punjab House Karachi | Booking Form",
-      LEFT,
-      287
-    );
-
-    doc.text(
-      "Completed Booking Request",
-      RIGHT,
-      287,
-      {
-        align: "right",
-      }
-    );
-  }
-
-  // ====================================================
-  // NEW PAGE
-  // ====================================================
-
-  function addNewPage() {
-    drawFooter();
-
-    doc.addPage();
-
-    drawPageHeader();
-  }
-
-  // ====================================================
-  // SPACE
-  // ====================================================
-
-  function ensureSpace(height = 20) {
-    if (y + height > 270) {
-      addNewPage();
-    }
-  }
-
-  // ====================================================
-  // SECTION
-  // ====================================================
-
-  function drawSectionHeading(
-    title,
-    subtitle = ""
-  ) {
-    ensureSpace(23);
-
-    doc.setFillColor(...LIGHT);
-
-    doc.roundedRect(
-      LEFT,
-      y,
-      CONTENT_WIDTH,
-      15,
-      3,
-      3,
-      "F"
-    );
-
-    doc.setFillColor(...GREEN);
-
-    doc.roundedRect(
-      LEFT,
-      y,
-      3,
-      15,
-      1.5,
-      1.5,
-      "F"
-    );
-
-    doc.setTextColor(...DARK);
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
-    doc.setFontSize(11);
-
-    doc.text(
-      title,
-      LEFT + 8,
-      y + 7
-    );
-
-    if (subtitle) {
-      doc.setTextColor(...MUTED);
-
-      doc.setFont(
-        "helvetica",
-        "normal"
-      );
-
-      doc.setFontSize(7);
-
-      doc.text(
-        subtitle,
-        LEFT + 8,
-        y + 12
-      );
-    }
-
-    y += 21;
-  }
-
-  // ====================================================
-  // FIELD
-  // ====================================================
-
-  function drawField(
-    label,
-    value,
-    options = {}
-  ) {
+  const handleChange = (e) => {
     const {
-      width = CONTENT_WIDTH,
-      height = 14,
-      multiline = false,
-    } = options;
-
-    ensureSpace(height + 7);
-
-    doc.setTextColor(...TEXT);
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
-    doc.setFontSize(8);
-
-    doc.text(
-      label,
-      LEFT,
-      y
-    );
-
-    y += 3;
-
-    doc.setFillColor(...WHITE);
-
-    doc.setDrawColor(...BORDER);
-
-    doc.setLineWidth(0.35);
-
-    doc.roundedRect(
-      LEFT,
-      y,
-      width,
-      height,
-      2,
-      2,
-      "FD"
-    );
-
-    const safeValue =
-      value || " ";
-
-    const lines =
-      doc.splitTextToSize(
-        String(safeValue),
-        width - 8
-      );
-
-    doc.setTextColor(...TEXT);
-
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
-    doc.setFontSize(8);
-
-    if (multiline) {
-      doc.text(
-        lines,
-        LEFT + 4,
-        y + 5
-      );
-    } else {
-      doc.text(
-        lines.slice(0, 1),
-        LEFT + 4,
-        y + 8
-      );
-    }
-
-    y += height + 7;
-  }
-
-  // ====================================================
-  // TWO FIELDS
-  // ====================================================
-
-  function drawTwoFields(
-    leftField,
-    rightField
-  ) {
-    const gap = 6;
-
-    const width =
-      (CONTENT_WIDTH - gap) / 2;
-
-    ensureSpace(28);
-
-    doc.setTextColor(...TEXT);
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
-    doc.setFontSize(8);
-
-    doc.text(
-      leftField.label,
-      LEFT,
-      y
-    );
-
-    doc.text(
-      rightField.label,
-      LEFT + width + gap,
-      y
-    );
-
-    y += 3;
-
-    doc.setFillColor(...WHITE);
-
-    doc.setDrawColor(...BORDER);
-
-    doc.setLineWidth(0.35);
-
-    doc.roundedRect(
-      LEFT,
-      y,
-      width,
-      14,
-      2,
-      2,
-      "FD"
-    );
-
-    doc.roundedRect(
-      LEFT + width + gap,
-      y,
-      width,
-      14,
-      2,
-      2,
-      "FD"
-    );
-
-    doc.setTextColor(...TEXT);
-
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
-    doc.setFontSize(8);
-
-    doc.text(
-      String(leftField.value || "-"),
-      LEFT + 4,
-      y + 8
-    );
-
-    doc.text(
-      String(rightField.value || "-"),
-      LEFT + width + gap + 4,
-      y + 8
-    );
-
-    y += 21;
-  }
-
-  // ====================================================
-  // CHECKMARK
-  // ====================================================
-
-  function drawCheckmark(
-    x,
-    yPos,
-    size = 10
-  ) {
-    doc.setDrawColor(...WHITE);
-
-    doc.setLineWidth(1.4);
-
-    doc.line(
-      x + size * 0.2,
-      yPos + size * 0.5,
-      x + size * 0.42,
-      yPos + size * 0.74
-    );
-
-    doc.line(
-      x + size * 0.42,
-      yPos + size * 0.74,
-      x + size * 0.82,
-      yPos + size * 0.25
-    );
-  }
-
-  // ====================================================
-  // AGREEMENT
-  // ====================================================
-
-  function drawAgreementBox(
-    title,
-    amount,
-    accepted
-  ) {
-    ensureSpace(28);
-
-    doc.setFillColor(
-      ...(accepted
-        ? GREEN_LIGHT
-        : RED_LIGHT)
-    );
-
-    doc.setDrawColor(...BORDER);
-
-    doc.setLineWidth(0.4);
-
-    doc.roundedRect(
-      LEFT,
-      y,
-      CONTENT_WIDTH,
-      21,
-      3,
-      3,
-      "FD"
-    );
-
-    const checkboxX =
-      LEFT + 5;
-
-    const checkboxY =
-      y + 5;
-
-    const checkboxSize = 10;
-
-    if (accepted) {
-      doc.setFillColor(...GREEN);
-
-      doc.setDrawColor(...GREEN);
-
-      doc.roundedRect(
-        checkboxX,
-        checkboxY,
-        checkboxSize,
-        checkboxSize,
-        1.5,
-        1.5,
-        "FD"
-      );
-
-      drawCheckmark(
-        checkboxX,
-        checkboxY,
-        checkboxSize
-      );
-    } else {
-      doc.setFillColor(...WHITE);
-
-      doc.setDrawColor(...MUTED);
-
-      doc.roundedRect(
-        checkboxX,
-        checkboxY,
-        checkboxSize,
-        checkboxSize,
-        1.5,
-        1.5,
-        "FD"
-      );
-    }
-
-    doc.setTextColor(...TEXT);
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
-    doc.setFontSize(8.5);
-
-    doc.text(
-      title,
-      LEFT + 20,
-      y + 8
-    );
-
-    doc.setTextColor(...GREEN);
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
-    doc.setFontSize(8);
-
-    doc.text(
-      String(amount || "-"),
-      LEFT + 20,
-      y + 14
-    );
-
-    doc.setTextColor(...MUTED);
-
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
-    doc.setFontSize(7);
-
-    doc.text(
-      accepted
-        ? "Accepted"
-        : "Not Accepted",
-      RIGHT - 5,
-      y + 11,
-      {
-        align: "right",
-      }
-    );
-
-    y += 27;
-  }
-
-  // ====================================================
-  // START
-  // ====================================================
-
-  drawPageHeader();
-
-  doc.setTextColor(...DARK);
-
-  doc.setFont(
-    "helvetica",
-    "bold"
-  );
-
-  doc.setFontSize(18);
-
-  doc.text(
-    "Event Booking Form",
-    PAGE_WIDTH / 2,
-    y,
-    {
-      align: "center",
-    }
-  );
-
-  doc.setTextColor(...MUTED);
-
-  doc.setFont(
-    "helvetica",
-    "normal"
-  );
-
-  doc.setFontSize(8);
-
-  doc.text(
-    "Completed booking information",
-    PAGE_WIDTH / 2,
-    y + 6,
-    {
-      align: "center",
-    }
-  );
-
-  y += 16;
-
-  // ====================================================
-  // EVENT
-  // ====================================================
-
-  drawSectionHeading(
-    "Event Information",
-    "Tell us about your event"
-  );
-
-  drawTwoFields(
-    {
-      label: "Date of Event *",
-      value: data.eventDate,
-    },
-    {
-      label: "Event *",
-      value: data.event,
-    }
-  );
-
-  drawField(
-    "Event Timing *",
-    data.eventTiming
-  );
-
-  // ====================================================
-  // CHARGES
-  // ====================================================
-
-  drawSectionHeading(
-    "Venue Charges",
-    "Review the applicable charges and agreements"
-  );
-
-  drawAgreementBox(
-    "Lawn Rent",
-    data.lawnRent,
-    data.lawnRentAgreement
-  );
-
-  drawAgreementBox(
-    "Maintenance Charges",
-    data.maintenanceCharges,
-    data.maintenanceAgreement
-  );
-
-  drawAgreementBox(
-    "Advance / Refundable Security",
-    data.advanceSecurity,
-    data.advanceAgreement
-  );
-
-  // ====================================================
-  // ROOMS
-  // ====================================================
-
-  drawSectionHeading(
-    "Rooms",
-    "Maximum 2 rooms available. Rs. 5,000 per room."
-  );
-
-  drawTwoFields(
-    {
-      label: "No. of Rooms *",
-      value: `${data.rooms} ${
-        Number(data.rooms) === 1
-          ? "Room"
-          : "Rooms"
-      }`,
-    },
-    {
-      label: "Room Charges",
-      value:
-        data.roomCharges ||
-        "Rs. 0/-",
-    }
-  );
-
-  // ====================================================
-  // CLIENT
-  // ====================================================
-
-  drawSectionHeading(
-    "Client Information",
-    "Personal and contact information"
-  );
-
-  drawField(
-    "Name of Client & Designation / C/o *",
-    data.clientName
-  );
-
-  drawTwoFields(
-    {
-      label: "C.N.I. No. *",
-      value: data.cnic,
-    },
-    {
-      label: "Contact No. *",
-      value: data.contactNo,
-    }
-  );
-
-  drawField(
-    "Address *",
-    data.address,
-    {
-      height: 28,
-      multiline: true,
-    }
-  );
-
-  // ====================================================
-  // TERMS
-  // ====================================================
-
-  drawSectionHeading(
-    "Terms & Conditions",
-    "Applicant confirmation"
-  );
-
-  drawAgreementBox(
-    "I have read and accepted all terms and conditions",
-    "Accepted",
-    data.termsAccepted
-  );
-
-  // ====================================================
-  // FINAL
-  // ====================================================
-
-  ensureSpace(35);
-
-  doc.setFillColor(...GREEN);
-
-  doc.roundedRect(
-    LEFT,
-    y,
-    CONTENT_WIDTH,
-    27,
-    4,
-    4,
-    "F"
-  );
-
-  doc.setTextColor(...WHITE);
-
-  doc.setFont(
-    "helvetica",
-    "bold"
-  );
-
-  doc.setFontSize(11);
-
-  doc.text(
-    "Booking Request Completed",
-    PAGE_WIDTH / 2,
-    y + 10,
-    {
-      align: "center",
-    }
-  );
-
-  doc.setFont(
-    "helvetica",
-    "normal"
-  );
-
-  doc.setFontSize(7.5);
-
-  doc.text(
-    "The information above has been submitted to Punjab House.",
-    PAGE_WIDTH / 2,
-    y + 17,
-    {
-      align: "center",
-    }
-  );
-
-  drawFooter();
-
-  return doc.output("arraybuffer");
-}
-
-// ======================================================
-// VALIDATE BOOKING
-// ======================================================
-
-function validateBooking(data) {
-  if (!data || typeof data !== "object") {
-    return "Invalid booking data.";
-  }
-
-  if (!data.eventDate) {
-    return "Event date is required.";
-  }
-
-  if (!data.event) {
-    return "Event type is required.";
-  }
-
-  if (!data.eventTiming) {
-    return "Event timing is required.";
-  }
-
-  if (!data.lawnRentAgreement) {
-    return "Lawn Rent agreement is required.";
-  }
-
-  if (!data.maintenanceAgreement) {
-    return "Maintenance Charges agreement is required.";
-  }
-
-  if (!data.advanceAgreement) {
-    return "Advance Security agreement is required.";
-  }
-
-  if (
-    !["1", "2"].includes(
-      String(data.rooms)
-    )
-  ) {
-    return "Please select 1 or 2 rooms.";
-  }
-
-  if (
-    !data.clientName ||
-    typeof data.clientName !== "string" ||
-    !data.clientName.trim()
-  ) {
-    return "Client name is required.";
-  }
-
-  const cnicRegex =
-    /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
-
-  if (
-    !cnicRegex.test(
-      String(data.cnic || "")
-    )
-  ) {
-    return "Invalid CNIC format. Use 00000-0000000-0.";
-  }
-
-  const phone =
-    String(data.contactNo || "")
-      .replace(/[\s-]/g, "");
-
-  const phoneRegex =
-    /^[0-9]{10,15}$/;
-
-  if (!phoneRegex.test(phone)) {
-    return "Invalid contact number.";
-  }
-
-  if (
-    !data.address ||
-    typeof data.address !== "string" ||
-    data.address.trim().length < 10
-  ) {
-    return "Complete address is required.";
-  }
-
-  if (!data.termsAccepted) {
-    return "Terms and conditions must be accepted.";
-  }
-
-  return null;
-}
-
-// ======================================================
-// EMAIL HTML
-// ======================================================
-
-function createEmailHTML(data) {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Punjab House Booking</title>
-</head>
-
-<body style="
-margin:0;
-padding:0;
-background:#f8fafc;
-font-family:Arial,sans-serif;
-">
-
-<div style="
-max-width:700px;
-margin:30px auto;
-background:#ffffff;
-border-radius:18px;
-overflow:hidden;
-border:1px solid #e2e8f0;
-">
-
-<div style="
-background:#0f172a;
-padding:30px;
-text-align:center;
-">
-
-<h1 style="
-margin:0;
-color:#ffffff;
-font-size:28px;
-">
-Punjab House
-</h1>
-
-<p style="
-margin:8px 0 0;
-color:#00c874;
-font-size:12px;
-font-weight:bold;
-letter-spacing:2px;
-">
-NEW BOOKING REQUEST
-</p>
-
-</div>
-
-<div style="padding:30px;">
-
-<h2 style="color:#0f172a;">
-Booking Details
-</h2>
-
-<table style="
-width:100%;
-border-collapse:collapse;
-">
-
-${[
-  ["Client Name", data.clientName],
-  ["Event Date", data.eventDate],
-  ["Event", data.event],
-  ["Event Timing", data.eventTiming],
-  ["Lawn Rent", data.lawnRent],
-  [
-    "Lawn Rent Agreement",
-    data.lawnRentAgreement
-      ? "Accepted"
-      : "Not Accepted",
-  ],
-  [
-    "Maintenance Charges",
-    data.maintenanceCharges,
-  ],
-  [
-    "Maintenance Agreement",
-    data.maintenanceAgreement
-      ? "Accepted"
-      : "Not Accepted",
-  ],
-  [
-    "Advance Security",
-    data.advanceSecurity,
-  ],
-  [
-    "Advance Agreement",
-    data.advanceAgreement
-      ? "Accepted"
-      : "Not Accepted",
-  ],
-  ["Rooms", data.rooms],
-  [
-    "Room Charges",
-    data.roomCharges || "Rs. 0/-",
-  ],
-  ["CNIC", data.cnic],
-  ["Contact No.", data.contactNo],
-  ["Address", data.address],
-]
-  .map(
-    ([label, value]) => `
-<tr>
-<td style="
-padding:9px 0;
-color:#64748b;
-font-weight:bold;
-vertical-align:top;
-">
-${escapeHTML(label)}
-</td>
-
-<td style="
-padding:9px 0;
-color:#0f172a;
-">
-${escapeHTML(value)}
-</td>
-</tr>
-`
-  )
-  .join("")}
-
-</table>
-
-<div style="
-margin-top:24px;
-padding:18px;
-border-radius:12px;
-background:#ecfdf5;
-border:1px solid #bbf7d0;
-">
-
-<strong style="color:#047857;">
-Completed Booking Form Attached
-</strong>
-
-<p style="
-margin:7px 0 0;
-color:#64748b;
-font-size:14px;
-">
-The complete filled booking form is attached
-to this email as a PDF.
-</p>
-
-</div>
-
-</div>
-
-<div style="
-padding:18px 30px;
-background:#f8fafc;
-border-top:1px solid #e2e8f0;
-text-align:center;
-color:#64748b;
-font-size:12px;
-">
-
-Punjab House Karachi |
-GOR-1, Bath Island, Clifton, Karachi
-
-</div>
-
-</div>
-
-</body>
-</html>
-`;
-}
-
-// ======================================================
-// SEND EMAIL
-// ======================================================
-
-async function sendBookingEmail(
-  data,
-  pdfBuffer,
-  fileName
-) {
-  if (!transporter) {
-    throw new Error(
-      "Email transporter is not configured."
-    );
-  }
-
-  const mailOptions = {
-    from:
-      `"Punjab House Website" <${process.env.GMAIL_USER}>`,
-
-    to:
-      process.env.ADMIN_EMAIL,
-
-    subject:
-      `New Punjab House Booking - ${data.clientName}`,
-
-    text: `
-New Punjab House Booking
-
-Client Name: ${data.clientName}
-Event Date: ${data.eventDate}
-Event: ${data.event}
-Event Timing: ${data.eventTiming}
-
-Lawn Rent: ${data.lawnRent}
-Maintenance Charges: ${data.maintenanceCharges}
-Advance Security: ${data.advanceSecurity}
-
-Rooms: ${data.rooms}
-Room Charges: ${data.roomCharges || "Rs. 0/-"}
-
-CNIC: ${data.cnic}
-Contact: ${data.contactNo}
-
-Address:
-${data.address}
-`,
-
-    html: createEmailHTML(data),
-
-    attachments: [
-      {
-        filename: fileName,
-        content: pdfBuffer,
-        contentType: "application/pdf",
-      },
-    ],
+      name,
+      value,
+      type,
+      checked,
+    } = e.target;
+
+    setForm((previous) => ({
+      ...previous,
+      [name]:
+        type === "checkbox"
+          ? checked
+          : value,
+    }));
+
+    setError("");
+    setSuccess("");
   };
 
-  return transporter.sendMail(
-    mailOptions
+  // ====================================================
+  // ROOM CHANGE
+  // ====================================================
+
+  const handleRoomChange = (e) => {
+    const rooms = e.target.value;
+
+    setForm((previous) => ({
+      ...previous,
+
+      rooms,
+
+      roomCharges:
+        rooms === "2"
+          ? "Rs. 10,000/-"
+          : "Rs. 5,000/-",
+    }));
+
+    setError("");
+    setSuccess("");
+  };
+
+  // ====================================================
+  // CNIC FORMAT
+  // ====================================================
+
+  const handleCNIC = (e) => {
+    let value =
+      e.target.value.replace(/\D/g, "");
+
+    // Maximum 13 digits
+    if (value.length > 13) {
+      value = value.substring(0, 13);
+    }
+
+    // 00000-0000000-0
+    if (value.length > 5) {
+      value =
+        value.substring(0, 5) +
+        "-" +
+        value.substring(5);
+    }
+
+    if (value.length > 13) {
+      value =
+        value.substring(0, 13) +
+        "-" +
+        value.substring(13);
+    }
+
+    setForm((previous) => ({
+      ...previous,
+      cnic: value,
+    }));
+
+    setError("");
+    setSuccess("");
+  };
+
+  // ====================================================
+  // FRONTEND VALIDATION
+  // ====================================================
+
+  const validateForm = () => {
+    if (!form.eventDate) {
+      return "Please select the event date.";
+    }
+
+    if (!form.event) {
+      return "Please select the event type.";
+    }
+
+    if (!form.eventTiming) {
+      return "Please select the event timing.";
+    }
+
+    if (!form.lawnRentAgreement) {
+      return "Please accept the Lawn Rent agreement.";
+    }
+
+    if (!form.advanceAgreement) {
+      return "Please accept the Advance Security agreement.";
+    }
+
+    if (
+      !["1", "2"].includes(form.rooms)
+    ) {
+      return "Please select 1 or 2 rooms.";
+    }
+
+    if (!form.clientName.trim()) {
+      return "Please enter the client name.";
+    }
+
+    const cnicRegex =
+      /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
+
+    if (!cnicRegex.test(form.cnic)) {
+      return (
+        "Please enter a valid CNIC. " +
+        "Example: 00000-0000000-0"
+      );
+    }
+
+    const phone =
+      form.contactNo.replace(
+        /[\s-]/g,
+        ""
+      );
+
+    if (!/^[0-9]{10,15}$/.test(phone)) {
+      return "Please enter a valid contact number.";
+    }
+
+    if (
+      !form.address.trim() ||
+      form.address.trim().length < 10
+    ) {
+      return "Please enter a complete address.";
+    }
+
+    if (!form.termsAccepted) {
+      return (
+        "Please accept the Terms & Conditions."
+      );
+    }
+
+    return null;
+  };
+
+  // ====================================================
+  // SUBMIT FORM
+  // ====================================================
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    setError("");
+    setSuccess("");
+
+    const validationError =
+      validateForm();
+
+    if (validationError) {
+      setError(validationError);
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
+      return;
+    }
+
+    if (!API_URL) {
+      setError(
+        "Railway backend URL has not been configured."
+      );
+
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      console.log(
+        "📤 Sending booking to Railway..."
+      );
+
+      const response = await fetch(
+        `${API_URL}/api/bookings`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Accept:
+              "application/json",
+          },
+
+          body: JSON.stringify(form),
+        }
+      );
+
+      let result = null;
+
+      try {
+        result =
+          await response.json();
+      } catch {
+        result = null;
+      }
+
+      console.log(
+        "📥 Railway response:",
+        result
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          result?.message ||
+            `Server error: ${response.status}`
+        );
+      }
+
+      if (!result?.success) {
+        throw new Error(
+          result?.message ||
+            "Booking could not be submitted."
+        );
+      }
+
+      setSuccess(
+        "Booking submitted successfully! Your booking form has been sent to Punjab House."
+      );
+
+      setForm(initialForm);
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
+    } catch (err) {
+      console.error(
+        "BOOKING SUBMISSION ERROR:",
+        err
+      );
+
+      let message =
+        "Unable to submit booking. Please try again.";
+
+      if (
+        err instanceof TypeError &&
+        err.message === "Failed to fetch"
+      ) {
+        message =
+          "Unable to connect to the Railway server. Please check that the backend is online and CORS is configured correctly.";
+      } else if (err.message) {
+        message = err.message;
+      }
+
+      setError(message);
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ====================================================
+  // TODAY DATE
+  // ====================================================
+
+  const today =
+    new Date()
+      .toISOString()
+      .split("T")[0];
+
+  // ====================================================
+  // UI
+  // ====================================================
+
+  return (
+    <main className="min-h-screen bg-white text-slate-900">
+
+      {/* ==================================================
+          HERO
+      ================================================== */}
+
+      <section className="relative overflow-hidden border-b border-slate-200 bg-white">
+
+        <div className="pointer-events-none absolute inset-0">
+
+          <div className="absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-emerald-100/60 blur-3xl" />
+
+          <div className="absolute right-0 top-20 h-56 w-56 rounded-full bg-emerald-50 blur-3xl" />
+
+          <div className="absolute left-0 bottom-0 h-56 w-56 rounded-full bg-slate-100 blur-3xl" />
+
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+
+          <div className="mx-auto max-w-3xl text-center">
+
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+
+              <Building2 size={16} />
+
+              Punjab House Karachi
+
+            </div>
+
+            <h1 className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+
+              Event Booking Form
+
+            </h1>
+
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+
+              Complete the booking request below
+              to submit your event details to
+              Punjab House Karachi.
+
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ==================================================
+          FORM SECTION
+      ================================================== */}
+
+      <section className="bg-white px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
+
+        <div className="mx-auto max-w-5xl">
+
+          {/* =================================================
+              SUCCESS
+          ================================================= */}
+
+          {success && (
+
+            <div className="mb-8 flex items-start gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-800 shadow-sm">
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+
+                <CheckCircle2 size={22} />
+
+              </div>
+
+              <div>
+
+                <h3 className="font-bold">
+                  Booking Submitted
+                </h3>
+
+                <p className="mt-1 text-sm leading-6">
+                  {success}
+                </p>
+
+              </div>
+
+            </div>
+
+          )}
+
+          {/* =================================================
+              ERROR
+          ================================================= */}
+
+          {error && (
+
+            <div className="mb-8 flex items-start gap-4 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800 shadow-sm">
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500 font-bold text-white">
+
+                !
+
+              </div>
+
+              <div>
+
+                <h3 className="font-bold">
+                  Submission Failed
+                </h3>
+
+                <p className="mt-1 text-sm leading-6">
+                  {error}
+                </p>
+
+              </div>
+
+            </div>
+
+          )}
+
+          {/* =================================================
+              FORM
+          ================================================= */}
+
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-8"
+          >
+
+            {/* =================================================
+                EVENT INFORMATION
+            ================================================= */}
+
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+
+              <div className="border-b border-slate-200 bg-slate-50 px-6 py-5 sm:px-8">
+
+                <div className="flex items-center gap-3">
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500 text-white">
+
+                    <Calendar size={21} />
+
+                  </div>
+
+                  <div>
+
+                    <h2 className="text-lg font-bold text-slate-950">
+                      Event Information
+                    </h2>
+
+                    <p className="text-sm text-slate-500">
+                      Tell us about your event
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="grid gap-6 p-6 sm:grid-cols-2 sm:p-8">
+
+                {/* DATE */}
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-bold text-slate-800">
+                    Date of Event *
+                  </label>
+
+                  <div className="relative">
+
+                    <Calendar
+                      size={18}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600"
+                    />
+
+                    <input
+                      type="date"
+                      name="eventDate"
+                      value={form.eventDate}
+                      onChange={handleChange}
+                      min={today}
+                      required
+                      className="w-full rounded-xl border border-slate-300 bg-white py-3.5 pl-11 pr-4 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    />
+
+                  </div>
+
+                </div>
+
+                {/* EVENT */}
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-bold text-slate-800">
+                    Event *
+                  </label>
+
+                  <select
+                    name="event"
+                    value={form.event}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  >
+
+                    <option value="">
+                      Select event type
+                    </option>
+
+                    <option value="Wedding">
+                      Wedding
+                    </option>
+
+                    <option value="Walima">
+                      Walima
+                    </option>
+
+                    <option value="Corporate Event">
+                      Shalima
+                    </option>
+
+                    <option value="Corporate Event">
+                      Nikah
+                    </option>
+                    
+                    <option value="Corporate Event">
+                      Corporate Event
+                    </option>
+
+                  </select>
+
+                </div>
+
+                {/* EVENT TIMING */}
+
+                <div className="sm:col-span-2">
+
+                  <label className="mb-2 block text-sm font-bold text-slate-800">
+                    Event Timing *
+                  </label>
+
+                  <div className="relative">
+
+                    <Clock
+                      size={18}
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600"
+                    />
+
+                    <select
+                      name="eventTiming"
+                      value={form.eventTiming}
+                      onChange={handleChange}
+                      required
+                      className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-3.5 pl-11 pr-10 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    >
+
+                      <option value="">
+                        Select event timing
+                      </option>
+
+                      <option value="Morning">
+                        Morning
+                      </option>
+
+                      <option value="Afternoon">
+                        Afternoon
+                      </option>
+
+                      <option value="Evening">
+                        Evening
+                      </option>
+
+                    
+
+                    </select>
+
+                    <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                      ▼
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* =================================================
+                VENUE CHARGES
+            ================================================= */}
+
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+
+              <div className="border-b border-slate-200 bg-slate-50 px-6 py-5 sm:px-8">
+
+                <div className="flex items-center gap-3">
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500 text-white">
+
+                    <CreditCard size={21} />
+
+                  </div>
+
+                  <div>
+
+                    <h2 className="text-lg font-bold text-slate-950">
+                      Venue Charges
+                    </h2>
+
+                    <p className="text-sm text-slate-500">
+                      Review the applicable charges
+                      and agreements
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="space-y-4 p-6 sm:p-8">
+
+                {/* LAWN RENT */}
+
+                <Agreement
+                  title="Lawn Rent"
+                  amount={form.lawnRent}
+                  name="lawnRentAgreement"
+                  checked={
+                    form.lawnRentAgreement
+                  }
+                  onChange={handleChange}
+                />
+
+                {/* SECURITY */}
+
+                <Agreement
+                  title="Advance / Refundable Security"
+                  amount={form.advanceSecurity}
+                  name="advanceAgreement"
+                  checked={
+                    form.advanceAgreement
+                  }
+                  onChange={handleChange}
+                />
+
+              </div>
+
+            </div>
+
+            {/* =================================================
+                ROOMS
+            ================================================= */}
+
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+
+              <div className="border-b border-slate-200 bg-slate-50 px-6 py-5 sm:px-8">
+
+                <div className="flex items-center gap-3">
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500 text-white">
+
+                    <DoorOpen size={21} />
+
+                  </div>
+
+                  <div>
+
+                    <h2 className="text-lg font-bold text-slate-950">
+                      Rooms
+                    </h2>
+
+                    <p className="text-sm text-slate-500">
+                      Maximum 2 rooms available.
+                      Rs. 5,000 per room.
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="grid gap-6 p-6 sm:grid-cols-2 sm:p-8">
+
+                {/* NUMBER OF ROOMS */}
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-bold text-slate-800">
+                    No. of Rooms *
+                  </label>
+
+                  <select
+                    name="rooms"
+                    value={form.rooms}
+                    onChange={handleRoomChange}
+                    required
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  >
+
+                    <option value="1">
+                      1 Room
+                    </option>
+
+                    <option value="2">
+                      2 Rooms
+                    </option>
+
+                  </select>
+
+                </div>
+
+                {/* ROOM CHARGES */}
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-bold text-slate-800">
+                    Room Charges
+                  </label>
+
+                  <div className="flex min-h-[54px] items-center rounded-xl border border-slate-200 bg-slate-50 px-4 font-semibold text-slate-700">
+
+                    {form.roomCharges}
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* =================================================
+                CLIENT INFORMATION
+            ================================================= */}
+
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+
+              <div className="border-b border-slate-200 bg-slate-50 px-6 py-5 sm:px-8">
+
+                <div className="flex items-center gap-3">
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500 text-white">
+
+                    <User size={21} />
+
+                  </div>
+
+                  <div>
+
+                    <h2 className="text-lg font-bold text-slate-950">
+                      Client Information
+                    </h2>
+
+                    <p className="text-sm text-slate-500">
+                      Personal and contact information
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="space-y-6 p-6 sm:p-8">
+
+                {/* CLIENT NAME */}
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-bold text-slate-800">
+                    Name of Client & Designation / C/o *
+                  </label>
+
+                  <input
+                    type="text"
+                    name="clientName"
+                    value={form.clientName}
+                    onChange={handleChange}
+                    placeholder="Enter client name"
+                    required
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  />
+
+                </div>
+
+                {/* CNIC + PHONE */}
+
+                <div className="grid gap-6 sm:grid-cols-2">
+
+                  {/* CNIC */}
+
+                  <div>
+
+                    <label className="mb-2 block text-sm font-bold text-slate-800">
+                      C.N.I. No. *
+                    </label>
+
+                    <input
+                      type="text"
+                      name="cnic"
+                      value={form.cnic}
+                      onChange={handleCNIC}
+                      placeholder="00000-0000000-0"
+                      maxLength={15}
+                      required
+                      inputMode="numeric"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    />
+
+                  </div>
+
+                  {/* PHONE */}
+
+                  <div>
+
+                    <label className="mb-2 block text-sm font-bold text-slate-800">
+                      Contact No. *
+                    </label>
+
+                    <div className="relative">
+
+                      <Phone
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600"
+                      />
+
+                      <input
+                        type="tel"
+                        name="contactNo"
+                        value={form.contactNo}
+                        onChange={handleChange}
+                        placeholder="03001234567"
+                        required
+                        inputMode="tel"
+                        className="w-full rounded-xl border border-slate-300 bg-white py-3.5 pl-11 pr-4 text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                      />
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                {/* ADDRESS */}
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-bold text-slate-800">
+                    Address *
+                  </label>
+
+                  <div className="relative">
+
+                    <MapPin
+                      size={18}
+                      className="absolute left-4 top-4 text-emerald-600"
+                    />
+
+                    <textarea
+                      name="address"
+                      value={form.address}
+                      onChange={handleChange}
+                      rows={5}
+                      placeholder="Enter complete address"
+                      required
+                      className="w-full resize-none rounded-xl border border-slate-300 bg-white py-3.5 pl-11 pr-4 text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    />
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* =================================================
+                TERMS & CONDITIONS
+            ================================================= */}
+
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+
+              <div className="border-b border-slate-200 bg-slate-50 px-6 py-5 sm:px-8">
+
+                <div className="flex items-center gap-3">
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500 text-white">
+
+                    <ShieldCheck size={21} />
+
+                  </div>
+
+                  <div>
+
+                    <h2 className="text-lg font-bold text-slate-950">
+                      Terms & Conditions
+                    </h2>
+
+                    <p className="text-sm text-slate-500">
+                      Please read the terms and conditions carefully
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="space-y-6 p-6 sm:p-8">
+
+                {/* =================================================
+                    T&C IMAGE
+                ================================================= */}
+
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+
+                  <img
+                    src={TERMS_IMAGE}
+                    alt="Punjab House Terms and Conditions"
+                    className="h-auto w-full object-contain"
+                  />
+
+                </div>
+
+                {/* =================================================
+                    ACCEPT TERMS
+                ================================================= */}
+
+                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-300 hover:bg-emerald-50">
+
+                  <input
+                    type="checkbox"
+                    name="termsAccepted"
+                    checked={
+                      form.termsAccepted
+                    }
+                    onChange={handleChange}
+                    className="mt-1 h-5 w-5 shrink-0 accent-emerald-500"
+                  />
+
+                  <span className="text-sm leading-6 text-slate-700">
+
+                    I have read and accepted
+                    all Terms & Conditions
+                    of Punjab House Karachi.
+
+                  </span>
+
+                </label>
+
+              </div>
+
+            </div>
+
+            {/* =================================================
+                SUBMIT
+            ================================================= */}
+
+            <div className="rounded-3xl bg-emerald-500 p-6 shadow-lg shadow-emerald-500/20 sm:p-8">
+
+              <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
+
+                <div className="text-center sm:text-left">
+
+                  <h3 className="text-xl font-bold text-white">
+                    Ready to Submit?
+                  </h3>
+
+                  <p className="mt-1 text-sm text-emerald-50">
+                    Your completed booking form
+                    will be sent to Punjab House.
+                  </p>
+
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="inline-flex min-w-[210px] items-center justify-center gap-3 rounded-xl bg-white px-7 py-4 font-bold text-emerald-700 shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+
+                  {loading ? (
+                    <>
+                      <Loader2
+                        size={20}
+                        className="animate-spin"
+                      />
+
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={20} />
+
+                      Submit Booking
+                    </>
+                  )}
+
+                </button>
+
+              </div>
+
+            </div>
+
+          </form>
+
+          {/* =================================================
+              INFORMATION
+          ================================================= */}
+
+          <div className="mt-8 flex items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+
+            <FileText
+              size={21}
+              className="mt-0.5 shrink-0 text-emerald-600"
+            />
+
+            <div>
+
+              <h3 className="font-bold text-slate-900">
+                Booking Confirmation
+              </h3>
+
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+
+                After successful submission, the
+                booking information is processed
+                by the Punjab House booking system
+                and a completed PDF form is
+                generated for the administration.
+
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
   );
 }
 
 // ======================================================
-// BOOKING API
+// AGREEMENT COMPONENT
 // ======================================================
 
-app.post(
-  "/api/bookings",
-  async (req, res) => {
-    console.log(
-      "======================================"
-    );
+function Agreement({
+  title,
+  amount,
+  name,
+  checked,
+  onChange,
+}) {
+  return (
 
-    console.log(
-      "📩 NEW BOOKING REQUEST"
-    );
+    <label
+      className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+        checked
+          ? "border-emerald-300 bg-emerald-50"
+          : "border-slate-200 bg-white hover:border-emerald-200 hover:bg-slate-50"
+      }`}
+    >
 
-    console.log(
-      "======================================"
-    );
+      {/* CHECKBOX */}
 
-    try {
-      const data = req.body;
+      <input
+        type="checkbox"
+        name={name}
+        checked={checked}
+        onChange={onChange}
+        className="h-5 w-5 shrink-0 accent-emerald-500"
+      />
 
-      // Validation
-      const validationError =
-        validateBooking(data);
+      {/* CONTENT */}
 
-      if (validationError) {
-        console.log(
-          "❌ Validation:",
-          validationError
-        );
+      <div className="min-w-0 flex-1">
 
-        return res.status(400).json({
-          success: false,
-          message: validationError,
-        });
-      }
+        <div className="font-bold text-slate-900">
+          {title}
+        </div>
 
-      // Email configuration
-      if (
-        !process.env.GMAIL_USER ||
-        !process.env.GMAIL_APP_PASSWORD ||
-        !process.env.ADMIN_EMAIL
-      ) {
-        console.error(
-          "❌ Missing email environment variables."
-        );
+        <div className="mt-1 text-sm font-semibold text-emerald-600">
+          {amount}
+        </div>
 
-        return res.status(500).json({
-          success: false,
-          message:
-            "Email configuration is missing on Railway.",
-        });
-      }
+      </div>
 
-      // Generate PDF
-      console.log(
-        "📄 Generating PDF..."
-      );
+      {/* STATUS */}
 
-      const pdfArrayBuffer =
-        generateBookingPDF(data);
+      <div
+        className={`hidden rounded-full px-3 py-1 text-xs font-bold sm:block ${
+          checked
+            ? "bg-emerald-100 text-emerald-700"
+            : "bg-slate-100 text-slate-500"
+        }`}
+      >
 
-      const pdfBuffer =
-        Buffer.from(pdfArrayBuffer);
+        {checked
+          ? "Accepted"
+          : "Required"}
 
-      console.log(
-        "✅ PDF generated."
-      );
+      </div>
 
-      // Safe filename
-      const safeName =
-        String(data.clientName)
-          .replace(
-            /[^a-z0-9]/gi,
-            "_"
-          )
-          .substring(0, 40) ||
-        "Client";
+      {/* CHECK ICON */}
 
-      const fileName =
-        `PunjabHouse-Booking-${safeName}.pdf`;
+      {checked && (
 
-      // Send email
-      console.log(
-        "📧 Sending email..."
-      );
+        <CheckCircle2
+          size={22}
+          className="shrink-0 text-emerald-500"
+        />
 
-      await sendBookingEmail(
-        data,
-        pdfBuffer,
-        fileName
-      );
+      )}
 
-      console.log(
-        "✅ Booking email sent successfully."
-      );
-
-      console.log(
-        "======================================"
-      );
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Booking submitted successfully.",
-      });
-
-    } catch (error) {
-      console.error(
-        "❌ BOOKING ERROR"
-      );
-
-      console.error(
-        "Code:",
-        error.code || "UNKNOWN"
-      );
-
-      console.error(
-        "Message:",
-        error.message || "Unknown error"
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to process booking.",
-        error:
-          process.env.NODE_ENV === "production"
-            ? undefined
-            : error.message,
-      });
-    }
-  }
-);
-
-// ======================================================
-// HEALTH CHECK
-// ======================================================
-
-app.get(
-  "/",
-  (req, res) => {
-    return res.status(200).json({
-      success: true,
-
-      message:
-        "Punjab House Booking API is running.",
-
-      status: "online",
-
-      emailConfigured:
-        Boolean(
-          process.env.GMAIL_USER &&
-          process.env.GMAIL_APP_PASSWORD &&
-          process.env.ADMIN_EMAIL
-        ),
-
-      port: PORT,
-    });
-  }
-);
-
-// ======================================================
-// EMAIL STATUS
-// ======================================================
-
-app.get(
-  "/api/email-status",
-  async (req, res) => {
-    if (!transporter) {
-      return res.status(503).json({
-        success: false,
-        emailConfigured: false,
-        message:
-          "Email transporter is not configured.",
-      });
-    }
-
-    try {
-      await transporter.verify();
-
-      return res.status(200).json({
-        success: true,
-        emailConfigured: true,
-        smtp:
-          "Gmail SMTP is reachable.",
-        message:
-          "Email service is working.",
-      });
-
-    } catch (error) {
-      return res.status(503).json({
-        success: false,
-        emailConfigured: true,
-        smtp:
-          "Gmail SMTP is not reachable.",
-        code:
-          error.code || "UNKNOWN",
-        message:
-          error.message ||
-          "SMTP connection failed.",
-      });
-    }
-  }
-);
-
-// ======================================================
-// 404
-// ======================================================
-
-app.use(
-  (req, res) => {
-    return res.status(404).json({
-      success: false,
-      message:
-        `Cannot ${req.method} ${req.originalUrl}`,
-    });
-  }
-);
-
-// ======================================================
-// GLOBAL ERROR
-// ======================================================
-
-app.use(
-  (
-    error,
-    req,
-    res,
-    next
-  ) => {
-    console.error(
-      "❌ Global server error:",
-      error
-    );
-
-    if (res.headersSent) {
-      return next(error);
-    }
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Internal server error.",
-    });
-  }
-);
-
-// ======================================================
-// START SERVER
-// ======================================================
-
-app.listen(
-  PORT,
-  "0.0.0.0",
-  () => {
-    console.log(
-      "======================================"
-    );
-
-    console.log(
-      `🚀 Punjab House API running on port ${PORT}`
-    );
-
-    console.log(
-      "🌐 Railway server listening on 0.0.0.0"
-    );
-
-    console.log(
-      `🌍 Frontend: ${FRONTEND_URL}`
-    );
-
-    console.log(
-      "======================================"
-    );
-
-    // Do not block server startup
-    verifyEmail();
-  }
-);
+    </label>
+  );
+}
