@@ -380,7 +380,7 @@ export default function AboutPage() {
                   alt="Hon'ble Chief Minister Punjab Maryam Nawaz Sharif"
                   className="
                     w-full
-                    h-[120px]
+                    h-[590px]
                     md:h-[920px]
                     object-cover
                     object-top
