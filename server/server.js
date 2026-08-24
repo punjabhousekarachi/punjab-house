@@ -1,14 +1,50 @@
+// ======================================================
+// PUNJAB HOUSE KARACHI - BOOKING API
+// Railway Production Backend
+// ======================================================
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const dns = require("dns");
 const nodemailer = require("nodemailer");
 const { jsPDF } = require("jspdf");
 
+// ======================================================
+// ENVIRONMENT
+// ======================================================
+
 dotenv.config();
+
+// Prefer IPv4
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch (error) {
+  console.log("⚠️ IPv4 DNS preference unavailable.");
+}
 
 const app = express();
 
+// IMPORTANT:
+// Railway provides process.env.PORT automatically.
 const PORT = process.env.PORT || 5000;
+
+// ======================================================
+// RAILWAY BACKEND
+// ======================================================
+
+const RAILWAY_URL =
+  "https://punjab-house-production.up.railway.app";
+
+// ======================================================
+// ALLOWED FRONTEND ORIGINS
+// ======================================================
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://punjab-house-karachi.netlify.app",
+];
 
 // ======================================================
 // CORS
@@ -16,21 +52,43 @@ const PORT = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "https://punjab-house-karachi.netlify.app",
+    origin: function (origin, callback) {
+      // Allow Postman, curl and server-to-server requests
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("⚠️ CORS blocked:", origin);
+
+      return callback(
+        new Error(`CORS blocked for origin: ${origin}`)
+      );
+    },
+
+    methods: [
+      "GET",
+      "POST",
+      "OPTIONS",
     ],
-    methods: ["GET", "POST", "OPTIONS"],
+
     allowedHeaders: [
       "Content-Type",
       "Authorization",
     ],
+
+    credentials: false,
   })
 );
 
+// Explicit OPTIONS handling
+app.options("*", cors());
+
 // ======================================================
-// JSON
+// BODY PARSER
 // ======================================================
 
 app.use(
@@ -39,32 +97,157 @@ app.use(
   })
 );
 
-// ======================================================
-// GMAIL
-// ======================================================
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "2mb",
+  })
+);
 
 // ======================================================
-// VERIFY GMAIL
+// SERVER INFORMATION
+// ======================================================
+
+console.log("======================================");
+console.log("Punjab House Karachi Booking API");
+console.log("======================================");
+
+console.log(
+  "Railway URL:",
+  RAILWAY_URL
+);
+
+console.log(
+  "GMAIL_USER:",
+  process.env.GMAIL_USER
+    ? "SET"
+    : "MISSING"
+);
+
+console.log(
+  "GMAIL_APP_PASSWORD:",
+  process.env.GMAIL_APP_PASSWORD
+    ? "SET"
+    : "MISSING"
+);
+
+console.log(
+  "ADMIN_EMAIL:",
+  process.env.ADMIN_EMAIL
+    ? "SET"
+    : "MISSING"
+);
+
+console.log(
+  "PORT:",
+  PORT
+);
+
+console.log("======================================");
+
+// ======================================================
+// GMAIL SMTP TRANSPORTER
+// ======================================================
+
+let transporter = null;
+
+if (
+  process.env.GMAIL_USER &&
+  process.env.GMAIL_APP_PASSWORD
+) {
+  transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+
+    port: 587,
+
+    secure: false,
+
+    requireTLS: true,
+
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+
+    family: 4,
+
+    connectionTimeout: 10000,
+
+    greetingTimeout: 10000,
+
+    socketTimeout: 15000,
+
+    tls: {
+      rejectUnauthorized: true,
+    },
+  });
+
+  console.log(
+    "📧 Gmail SMTP transporter created."
+  );
+} else {
+  console.error(
+    "❌ Gmail SMTP transporter was NOT created."
+  );
+
+  console.error(
+    "⚠️ Check Railway Variables:"
+  );
+
+  console.error(
+    "GMAIL_USER"
+  );
+
+  console.error(
+    "GMAIL_APP_PASSWORD"
+  );
+}
+
+// ======================================================
+// VERIFY EMAIL
 // ======================================================
 
 async function verifyEmail() {
+  if (!transporter) {
+    console.log(
+      "⚠️ Email verification skipped."
+    );
+
+    return false;
+  }
+
   try {
+    console.log(
+      "📧 Testing Gmail SMTP connection..."
+    );
+
     await transporter.verify();
 
-    console.log("✅ Gmail connection successful.");
+    console.log(
+      "✅ Gmail SMTP connection successful."
+    );
+
+    return true;
   } catch (error) {
     console.error(
-      "❌ Gmail connection failed:",
-      error.message
+      "❌ Gmail SMTP connection failed."
     );
+
+    console.error(
+      "Code:",
+      error.code || "UNKNOWN"
+    );
+
+    console.error(
+      "Message:",
+      error.message || "Unknown error"
+    );
+
+    console.error(
+      "⚠️ Server will continue running."
+    );
+
+    return false;
   }
 }
 
@@ -92,26 +275,74 @@ function generateBookingPDF(data) {
     "a4"
   );
 
-  const GREEN = [0, 200, 116];
-  const DARK = [15, 23, 42];
-  const TEXT = [30, 41, 59];
-  const MUTED = [100, 116, 139];
-  const BORDER = [203, 213, 225];
-  const LIGHT = [248, 250, 252];
-  const GREEN_LIGHT = [236, 253, 245];
-  const RED_LIGHT = [255, 247, 247];
-  const WHITE = [255, 255, 255];
+  const GREEN = [
+    0,
+    200,
+    116,
+  ];
+
+  const DARK = [
+    15,
+    23,
+    42,
+  ];
+
+  const TEXT = [
+    30,
+    41,
+    59,
+  ];
+
+  const MUTED = [
+    100,
+    116,
+    139,
+  ];
+
+  const BORDER = [
+    203,
+    213,
+    225,
+  ];
+
+  const LIGHT = [
+    248,
+    250,
+    252,
+  ];
+
+  const GREEN_LIGHT = [
+    236,
+    253,
+    245,
+  ];
+
+  const RED_LIGHT = [
+    255,
+    247,
+    247,
+  ];
+
+  const WHITE = [
+    255,
+    255,
+    255,
+  ];
 
   const PAGE_WIDTH = 210;
+
   const LEFT = 15;
+
   const RIGHT = 195;
-  const CONTENT_WIDTH = RIGHT - LEFT;
+
+  const CONTENT_WIDTH =
+    RIGHT - LEFT;
 
   let y = 15;
 
-  // =====================================================
-  // HEADER
-  // =====================================================
+  // ====================================================
+  // PAGE HEADER
+  // ====================================================
 
   function drawPageHeader() {
     doc.setFillColor(...DARK);
@@ -124,7 +355,7 @@ function generateBookingPDF(data) {
       "F"
     );
 
-    // Logo circle
+    // Logo
     doc.setFillColor(...GREEN);
 
     doc.circle(
@@ -135,10 +366,12 @@ function generateBookingPDF(data) {
     );
 
     doc.setTextColor(...WHITE);
+
     doc.setFont(
       "helvetica",
       "bold"
     );
+
     doc.setFontSize(9);
 
     doc.text(
@@ -150,12 +383,14 @@ function generateBookingPDF(data) {
       }
     );
 
-    // Punjab House name
+    // Punjab House
     doc.setTextColor(...WHITE);
+
     doc.setFont(
       "helvetica",
       "bold"
     );
+
     doc.setFontSize(15);
 
     doc.text(
@@ -174,6 +409,7 @@ function generateBookingPDF(data) {
       "helvetica",
       "normal"
     );
+
     doc.setFontSize(7);
 
     doc.text(
@@ -182,13 +418,14 @@ function generateBookingPDF(data) {
       22
     );
 
-    // Right side heading
+    // Right side
     doc.setTextColor(...GREEN);
 
     doc.setFont(
       "helvetica",
       "bold"
     );
+
     doc.setFontSize(8);
 
     doc.text(
@@ -210,6 +447,7 @@ function generateBookingPDF(data) {
       "helvetica",
       "normal"
     );
+
     doc.setFontSize(7);
 
     doc.text(
@@ -224,12 +462,13 @@ function generateBookingPDF(data) {
     y = 44;
   }
 
-  // =====================================================
+  // ====================================================
   // FOOTER
-  // =====================================================
+  // ====================================================
 
   function drawFooter() {
     doc.setDrawColor(...BORDER);
+
     doc.setLineWidth(0.3);
 
     doc.line(
@@ -264,9 +503,9 @@ function generateBookingPDF(data) {
     );
   }
 
-  // =====================================================
+  // ====================================================
   // NEW PAGE
-  // =====================================================
+  // ====================================================
 
   function addNewPage() {
     drawFooter();
@@ -276,24 +515,19 @@ function generateBookingPDF(data) {
     drawPageHeader();
   }
 
-  // =====================================================
+  // ====================================================
   // SPACE CHECK
-  // =====================================================
+  // ====================================================
 
-  function ensureSpace(
-    height = 20
-  ) {
-    if (
-      y + height >
-      270
-    ) {
+  function ensureSpace(height = 20) {
+    if (y + height > 270) {
       addNewPage();
     }
   }
 
-  // =====================================================
+  // ====================================================
   // SECTION HEADER
-  // =====================================================
+  // ====================================================
 
   function drawSectionHeading(
     title,
@@ -360,9 +594,9 @@ function generateBookingPDF(data) {
     y += 21;
   }
 
-  // =====================================================
+  // ====================================================
   // SINGLE FIELD
-  // =====================================================
+  // ====================================================
 
   function drawField(
     label,
@@ -375,9 +609,7 @@ function generateBookingPDF(data) {
       multiline = false,
     } = options;
 
-    ensureSpace(
-      height + 7
-    );
+    ensureSpace(height + 7);
 
     doc.setTextColor(...TEXT);
 
@@ -396,7 +628,6 @@ function generateBookingPDF(data) {
 
     y += 3;
 
-    // Field background
     doc.setFillColor(...WHITE);
 
     doc.setDrawColor(...BORDER);
@@ -414,8 +645,7 @@ function generateBookingPDF(data) {
     );
 
     const safeValue =
-      value ||
-      " ";
+      value || " ";
 
     const lines =
       doc.splitTextToSize(
@@ -446,13 +676,12 @@ function generateBookingPDF(data) {
       );
     }
 
-    y +=
-      height + 7;
+    y += height + 7;
   }
 
-  // =====================================================
+  // ====================================================
   // TWO FIELDS
-  // =====================================================
+  // ====================================================
 
   function drawTwoFields(
     leftField,
@@ -461,8 +690,7 @@ function generateBookingPDF(data) {
     const gap = 6;
 
     const width =
-      (CONTENT_WIDTH - gap) /
-      2;
+      (CONTENT_WIDTH - gap) / 2;
 
     ensureSpace(28);
 
@@ -475,14 +703,12 @@ function generateBookingPDF(data) {
 
     doc.setFontSize(8);
 
-    // Left label
     doc.text(
       leftField.label,
       LEFT,
       y
     );
 
-    // Right label
     doc.text(
       rightField.label,
       LEFT + width + gap,
@@ -492,10 +718,11 @@ function generateBookingPDF(data) {
     y += 3;
 
     doc.setFillColor(...WHITE);
+
     doc.setDrawColor(...BORDER);
+
     doc.setLineWidth(0.35);
 
-    // Left field
     doc.roundedRect(
       LEFT,
       y,
@@ -506,7 +733,6 @@ function generateBookingPDF(data) {
       "FD"
     );
 
-    // Right field
     doc.roundedRect(
       LEFT + width + gap,
       y,
@@ -538,19 +764,16 @@ function generateBookingPDF(data) {
       String(
         rightField.value || "-"
       ),
-      LEFT +
-        width +
-        gap +
-        4,
+      LEFT + width + gap + 4,
       y + 8
     );
 
     y += 21;
   }
 
-  // =====================================================
-  // DRAW CHECKMARK
-  // =====================================================
+  // ====================================================
+  // CHECKMARK
+  // ====================================================
 
   function drawCheckmark(
     x,
@@ -559,30 +782,29 @@ function generateBookingPDF(data) {
   ) {
     doc.setDrawColor(...WHITE);
 
-    // Make it thick and rounded
     doc.setLineWidth(1.4);
 
     if (
-      typeof doc.setLineCap === "function"
+      typeof doc.setLineCap ===
+      "function"
     ) {
       doc.setLineCap("round");
     }
 
     if (
-      typeof doc.setLineJoin === "function"
+      typeof doc.setLineJoin ===
+      "function"
     ) {
       doc.setLineJoin("round");
     }
 
-    // First stroke
     doc.line(
-      x + size * 0.20,
-      yPos + size * 0.50,
+      x + size * 0.2,
+      yPos + size * 0.5,
       x + size * 0.42,
       yPos + size * 0.74
     );
 
-    // Second stroke
     doc.line(
       x + size * 0.42,
       yPos + size * 0.74,
@@ -591,9 +813,9 @@ function generateBookingPDF(data) {
     );
   }
 
-  // =====================================================
+  // ====================================================
   // AGREEMENT BOX
-  // =====================================================
+  // ====================================================
 
   function drawAgreementBox(
     title,
@@ -602,16 +824,11 @@ function generateBookingPDF(data) {
   ) {
     ensureSpace(28);
 
-    // Background
-    if (accepted) {
-      doc.setFillColor(
-        ...GREEN_LIGHT
-      );
-    } else {
-      doc.setFillColor(
-        ...RED_LIGHT
-      );
-    }
+    doc.setFillColor(
+      ...(accepted
+        ? GREEN_LIGHT
+        : RED_LIGHT)
+    );
 
     doc.setDrawColor(...BORDER);
 
@@ -627,23 +844,17 @@ function generateBookingPDF(data) {
       "FD"
     );
 
-    // Checkbox coordinates
     const checkboxX =
       LEFT + 5;
 
     const checkboxY =
       y + 5;
 
-    const checkboxSize =
-      10;
-
-    // ===================================================
-    // CHECKBOX
-    // ===================================================
+    const checkboxSize = 10;
 
     if (accepted) {
-      // Filled green square
       doc.setFillColor(...GREEN);
+
       doc.setDrawColor(...GREEN);
 
       doc.roundedRect(
@@ -656,15 +867,14 @@ function generateBookingPDF(data) {
         "FD"
       );
 
-      // White manually drawn tick
       drawCheckmark(
         checkboxX,
         checkboxY,
         checkboxSize
       );
     } else {
-      // Empty checkbox
       doc.setFillColor(...WHITE);
+
       doc.setDrawColor(...MUTED);
 
       doc.setLineWidth(0.8);
@@ -679,10 +889,6 @@ function generateBookingPDF(data) {
         "FD"
       );
     }
-
-    // ===================================================
-    // TITLE
-    // ===================================================
 
     doc.setTextColor(...TEXT);
 
@@ -699,10 +905,6 @@ function generateBookingPDF(data) {
       y + 8
     );
 
-    // ===================================================
-    // AMOUNT
-    // ===================================================
-
     doc.setTextColor(...GREEN);
 
     doc.setFont(
@@ -713,14 +915,10 @@ function generateBookingPDF(data) {
     doc.setFontSize(8);
 
     doc.text(
-      amount,
+      String(amount || "-"),
       LEFT + 20,
       y + 14
     );
-
-    // ===================================================
-    // STATUS
-    // ===================================================
 
     doc.setTextColor(...MUTED);
 
@@ -745,15 +943,15 @@ function generateBookingPDF(data) {
     y += 27;
   }
 
-  // =====================================================
-  // BEGIN PDF
-  // =====================================================
+  // ====================================================
+  // START PDF
+  // ====================================================
 
   drawPageHeader();
 
-  // =====================================================
-  // MAIN TITLE
-  // =====================================================
+  // ====================================================
+  // TITLE
+  // ====================================================
 
   doc.setTextColor(...DARK);
 
@@ -793,9 +991,9 @@ function generateBookingPDF(data) {
 
   y += 16;
 
-  // =====================================================
+  // ====================================================
   // EVENT INFORMATION
-  // =====================================================
+  // ====================================================
 
   drawSectionHeading(
     "Event Information",
@@ -818,9 +1016,9 @@ function generateBookingPDF(data) {
     data.eventTiming
   );
 
-  // =====================================================
+  // ====================================================
   // VENUE CHARGES
-  // =====================================================
+  // ====================================================
 
   drawSectionHeading(
     "Venue Charges",
@@ -845,9 +1043,9 @@ function generateBookingPDF(data) {
     data.advanceAgreement
   );
 
-  // =====================================================
+  // ====================================================
   // ROOMS
-  // =====================================================
+  // ====================================================
 
   drawSectionHeading(
     "Rooms",
@@ -873,9 +1071,9 @@ function generateBookingPDF(data) {
     }
   );
 
-  // =====================================================
+  // ====================================================
   // CLIENT INFORMATION
-  // =====================================================
+  // ====================================================
 
   drawSectionHeading(
     "Client Information",
@@ -907,9 +1105,9 @@ function generateBookingPDF(data) {
     }
   );
 
-  // =====================================================
+  // ====================================================
   // TERMS
-  // =====================================================
+  // ====================================================
 
   drawSectionHeading(
     "Terms & Conditions",
@@ -924,9 +1122,9 @@ function generateBookingPDF(data) {
     data.termsAccepted
   );
 
-  // =====================================================
+  // ====================================================
   // FINAL BOX
-  // =====================================================
+  // ====================================================
 
   ensureSpace(35);
 
@@ -978,168 +1176,122 @@ function generateBookingPDF(data) {
 
   drawFooter();
 
-  // Return PDF as ArrayBuffer
-  return doc.output(
-    "arraybuffer"
-  );
+  return doc.output("arraybuffer");
 }
 
 // ======================================================
-// BOOKING ROUTE
+// VALIDATE BOOKING
 // ======================================================
 
-app.post(
-  "/api/bookings",
-  async (req, res) => {
-    try {
-      const data = req.body;
+function validateBooking(data) {
+  if (
+    !data ||
+    typeof data !== "object"
+  ) {
+    return "Invalid booking data.";
+  }
 
-      // --------------------------------------------------
-      // SERVER VALIDATION
-      // --------------------------------------------------
+  if (!data.eventDate) {
+    return "Event date is required.";
+  }
 
-      if (!data.eventDate) {
-        return res.status(400).json({
-          message:
-            "Event date is required.",
-        });
-      }
+  if (!data.event) {
+    return "Event type is required.";
+  }
 
-      if (!data.event) {
-        return res.status(400).json({
-          message:
-            "Event type is required.",
-        });
-      }
+  if (!data.eventTiming) {
+    return "Event timing is required.";
+  }
 
-      if (!data.eventTiming) {
-        return res.status(400).json({
-          message:
-            "Event timing is required.",
-        });
-      }
+  if (!data.lawnRentAgreement) {
+    return "Lawn Rent agreement is required.";
+  }
 
-      if (!data.lawnRentAgreement) {
-        return res.status(400).json({
-          message:
-            "Lawn Rent agreement is required.",
-        });
-      }
+  if (!data.maintenanceAgreement) {
+    return "Maintenance Charges agreement is required.";
+  }
 
-      if (!data.maintenanceAgreement) {
-        return res.status(400).json({
-          message:
-            "Maintenance Charges agreement is required.",
-        });
-      }
+  if (!data.advanceAgreement) {
+    return "Advance Security agreement is required.";
+  }
 
-      if (!data.advanceAgreement) {
-        return res.status(400).json({
-          message:
-            "Advance Security agreement is required.",
-        });
-      }
+  if (
+    !["1", "2"].includes(
+      String(data.rooms)
+    )
+  ) {
+    return "Please select 1 or 2 rooms.";
+  }
 
-      if (
-        !["1", "2"].includes(
-          String(data.rooms)
-        )
-      ) {
-        return res.status(400).json({
-          message:
-            "Please select 1 or 2 rooms.",
-        });
-      }
+  if (
+    !data.clientName ||
+    typeof data.clientName !== "string" ||
+    !data.clientName.trim()
+  ) {
+    return "Client name is required.";
+  }
 
-      if (!data.clientName) {
-        return res.status(400).json({
-          message:
-            "Client name is required.",
-        });
-      }
+  const cnicRegex =
+    /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
 
-      const cnicRegex =
-        /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
+  if (
+    !cnicRegex.test(
+      String(data.cnic || "")
+    )
+  ) {
+    return "Invalid CNIC format. Use 00000-0000000-0.";
+  }
 
-      if (
-        !cnicRegex.test(
-          data.cnic
-        )
-      ) {
-        return res.status(400).json({
-          message:
-            "Invalid CNIC format.",
-        });
-      }
+  const phone =
+    String(data.contactNo || "")
+      .replace(/[\s-]/g, "");
 
-      const phoneRegex =
-        /^[0-9]{10,15}$/;
+  const phoneRegex =
+    /^[0-9]{10,15}$/;
 
-      if (
-        !phoneRegex.test(
-          data.contactNo
-        )
-      ) {
-        return res.status(400).json({
-          message:
-            "Invalid contact number.",
-        });
-      }
+  if (!phoneRegex.test(phone)) {
+    return "Invalid contact number.";
+  }
 
-      if (
-        !data.address ||
-        data.address.trim().length <
-          10
-      ) {
-        return res.status(400).json({
-          message:
-            "Complete address is required.",
-        });
-      }
+  if (
+    !data.address ||
+    typeof data.address !== "string" ||
+    data.address.trim().length < 10
+  ) {
+    return "Complete address is required.";
+  }
 
-      if (!data.termsAccepted) {
-        return res.status(400).json({
-          message:
-            "Terms and conditions must be accepted.",
-        });
-      }
+  if (!data.termsAccepted) {
+    return "Terms and conditions must be accepted.";
+  }
 
-      // --------------------------------------------------
-      // GENERATE PDF
-      // --------------------------------------------------
+  return null;
+}
 
-      const pdfArrayBuffer =
-        generateBookingPDF(data);
+// ======================================================
+// CREATE EMAIL HTML
+// ======================================================
 
-      const pdfBuffer =
-        Buffer.from(
-          pdfArrayBuffer
-        );
-
-      const safeName =
-        String(data.clientName)
-          .replace(
-            /[^a-z0-9]/gi,
-            "_"
-          )
-          .substring(0, 40) ||
-        "Client";
-
-      const fileName =
-        `PunjabHouse-Booking-${safeName}.pdf`;
-
-      // --------------------------------------------------
-      // EMAIL HTML
-      // --------------------------------------------------
-
-      const emailHTML = `
+function createEmailHTML(data) {
+  return `
 <!DOCTYPE html>
+
 <html>
+
 <head>
-<meta charset="UTF-8" />
+
+<meta charset="UTF-8">
+
+<title>Punjab House Booking</title>
+
 </head>
 
-<body style="margin:0;padding:0;background:#f8fafc;font-family:Arial,sans-serif;">
+<body style="
+margin:0;
+padding:0;
+background:#f8fafc;
+font-family:Arial,sans-serif;
+">
 
 <div style="
 max-width:700px;
@@ -1150,259 +1302,280 @@ overflow:hidden;
 border:1px solid #e2e8f0;
 ">
 
-  <div style="
-    background:#0f172a;
-    padding:30px;
-    text-align:center;
-  ">
+<div style="
+background:#0f172a;
+padding:30px;
+text-align:center;
+">
 
-    <h1 style="
-      margin:0;
-      color:#ffffff;
-      font-size:28px;
-    ">
-      Punjab House
-    </h1>
+<h1 style="
+margin:0;
+color:#ffffff;
+font-size:28px;
+">
+Punjab House
+</h1>
 
-    <p style="
-      margin:8px 0 0;
-      color:#00c874;
-      font-size:12px;
-      font-weight:bold;
-      letter-spacing:2px;
-    ">
-      NEW BOOKING REQUEST
-    </p>
+<p style="
+margin:8px 0 0;
+color:#00c874;
+font-size:12px;
+font-weight:bold;
+letter-spacing:2px;
+">
+NEW BOOKING REQUEST
+</p>
 
-  </div>
+</div>
 
-  <div style="padding:30px;">
+<div style="
+padding:30px;
+">
 
-    <h2 style="
-      margin-top:0;
-      color:#0f172a;
-    ">
-      Booking Details
-    </h2>
+<h2 style="
+margin-top:0;
+color:#0f172a;
+">
+Booking Details
+</h2>
 
-    <table style="
-      width:100%;
-      border-collapse:collapse;
-    ">
+<table style="
+width:100%;
+border-collapse:collapse;
+">
 
-      <tr>
-        <td style="
-          padding:9px 0;
-          color:#64748b;
-          font-weight:bold;
-        ">
-          Client Name
-        </td>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Client Name
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.clientName)}
+</td>
+</tr>
 
-        <td style="
-          padding:9px 0;
-          color:#0f172a;
-        ">
-          ${escapeHTML(
-            data.clientName
-          )}
-        </td>
-      </tr>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Event Date
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.eventDate)}
+</td>
+</tr>
 
-      <tr>
-        <td style="
-          padding:9px 0;
-          color:#64748b;
-          font-weight:bold;
-        ">
-          Event Date
-        </td>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Event
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.event)}
+</td>
+</tr>
 
-        <td style="
-          padding:9px 0;
-          color:#0f172a;
-        ">
-          ${escapeHTML(
-            data.eventDate
-          )}
-        </td>
-      </tr>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Event Timing
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.eventTiming)}
+</td>
+</tr>
 
-      <tr>
-        <td style="
-          padding:9px 0;
-          color:#64748b;
-          font-weight:bold;
-        ">
-          Event
-        </td>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Lawn Rent
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.lawnRent)}
+</td>
+</tr>
 
-        <td style="
-          padding:9px 0;
-          color:#0f172a;
-        ">
-          ${escapeHTML(
-            data.event
-          )}
-        </td>
-      </tr>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Lawn Rent Agreement
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${data.lawnRentAgreement
+  ? "Accepted"
+  : "Not Accepted"}
+</td>
+</tr>
 
-      <tr>
-        <td style="
-          padding:9px 0;
-          color:#64748b;
-          font-weight:bold;
-        ">
-          Event Timing
-        </td>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Maintenance Charges
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.maintenanceCharges)}
+</td>
+</tr>
 
-        <td style="
-          padding:9px 0;
-          color:#0f172a;
-        ">
-          ${escapeHTML(
-            data.eventTiming
-          )}
-        </td>
-      </tr>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Maintenance Agreement
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${data.maintenanceAgreement
+  ? "Accepted"
+  : "Not Accepted"}
+</td>
+</tr>
 
-      <tr>
-        <td style="
-          padding:9px 0;
-          color:#64748b;
-          font-weight:bold;
-        ">
-          Contact No.
-        </td>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Advance Security
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.advanceSecurity)}
+</td>
+</tr>
 
-        <td style="
-          padding:9px 0;
-          color:#0f172a;
-        ">
-          ${escapeHTML(
-            data.contactNo
-          )}
-        </td>
-      </tr>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Advance Agreement
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${data.advanceAgreement
+  ? "Accepted"
+  : "Not Accepted"}
+</td>
+</tr>
 
-      <tr>
-        <td style="
-          padding:9px 0;
-          color:#64748b;
-          font-weight:bold;
-        ">
-          CNIC
-        </td>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Rooms
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.rooms)}
+</td>
+</tr>
 
-        <td style="
-          padding:9px 0;
-          color:#0f172a;
-        ">
-          ${escapeHTML(
-            data.cnic
-          )}
-        </td>
-      </tr>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Room Charges
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(
+  data.roomCharges || "Rs. 0/-"
+)}
+</td>
+</tr>
 
-      <tr>
-        <td style="
-          padding:9px 0;
-          color:#64748b;
-          font-weight:bold;
-        ">
-          Rooms
-        </td>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+CNIC
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.cnic)}
+</td>
+</tr>
 
-        <td style="
-          padding:9px 0;
-          color:#0f172a;
-        ">
-          ${escapeHTML(
-            data.rooms
-          )}
-        </td>
-      </tr>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Contact No.
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.contactNo)}
+</td>
+</tr>
 
-      <tr>
-        <td style="
-          padding:9px 0;
-          color:#64748b;
-          font-weight:bold;
-        ">
-          Room Charges
-        </td>
+<tr>
+<td style="padding:9px 0;color:#64748b;font-weight:bold;">
+Address
+</td>
+<td style="padding:9px 0;color:#0f172a;">
+${escapeHTML(data.address)}
+</td>
+</tr>
 
-        <td style="
-          padding:9px 0;
-          color:#0f172a;
-        ">
-          ${escapeHTML(
-            data.roomCharges ||
-              "Rs. 0/-"
-          )}
-        </td>
-      </tr>
+</table>
 
-    </table>
+<div style="
+margin-top:24px;
+padding:18px;
+border-radius:12px;
+background:#ecfdf5;
+border:1px solid #bbf7d0;
+">
 
-    <div style="
-      margin-top:24px;
-      padding:18px;
-      border-radius:12px;
-      background:#ecfdf5;
-      border:1px solid #bbf7d0;
-    ">
+<strong style="
+color:#047857;
+">
+Completed Booking Form Attached
+</strong>
 
-      <strong style="color:#047857;">
-        Completed Booking Form Attached
-      </strong>
+<p style="
+margin:7px 0 0;
+color:#64748b;
+font-size:14px;
+">
+The complete filled booking form is attached
+to this email as a PDF.
+</p>
 
-      <p style="
-        margin:7px 0 0;
-        color:#64748b;
-        font-size:14px;
-      ">
-        The complete filled booking form is attached
-        to this email as a PDF.
-      </p>
+</div>
 
-    </div>
+</div>
 
-  </div>
+<div style="
+padding:18px 30px;
+background:#f8fafc;
+border-top:1px solid #e2e8f0;
+text-align:center;
+color:#64748b;
+font-size:12px;
+">
 
-  <div style="
-    padding:18px 30px;
-    background:#f8fafc;
-    border-top:1px solid #e2e8f0;
-    text-align:center;
-    color:#64748b;
-    font-size:12px;
-  ">
-    Punjab House Karachi |
-    GOR-1, Bath Island, Clifton, Karachi
-  </div>
+Punjab House Karachi |
+GOR-1, Bath Island, Clifton, Karachi
+
+</div>
 
 </div>
 
 </body>
+
 </html>
 `;
+}
 
-      // --------------------------------------------------
-      // SEND EMAIL
-      // --------------------------------------------------
+// ======================================================
+// SEND BOOKING EMAIL
+// ======================================================
 
-      await transporter.sendMail({
-        from:
-          `"Punjab House Website" <${process.env.GMAIL_USER}>`,
+async function sendBookingEmail(
+  data,
+  pdfBuffer,
+  fileName
+) {
+  if (!transporter) {
+    throw new Error(
+      "Email transporter is not configured."
+    );
+  }
 
-        to:
-          process.env.ADMIN_EMAIL,
+  if (!process.env.GMAIL_USER) {
+    throw new Error(
+      "GMAIL_USER is missing."
+    );
+  }
 
-        subject:
-          `New Punjab House Booking - ${data.clientName}`,
+  if (!process.env.ADMIN_EMAIL) {
+    throw new Error(
+      "ADMIN_EMAIL is missing."
+    );
+  }
 
-        text: `
+  const mailOptions = {
+    from:
+      `"Punjab House Website" <${process.env.GMAIL_USER}>`,
+
+    to:
+      process.env.ADMIN_EMAIL,
+
+    subject:
+      `New Punjab House Booking - ${data.clientName}`,
+
+    text: `
 New Punjab House Booking
 
 Client Name:
@@ -1430,7 +1603,7 @@ Rooms:
 ${data.rooms}
 
 Room Charges:
-${data.roomCharges}
+${data.roomCharges || "Rs. 0/-"}
 
 CNIC:
 ${data.cnic}
@@ -1442,38 +1615,198 @@ Address:
 ${data.address}
 `,
 
-        html: emailHTML,
+    html:
+      createEmailHTML(data),
 
-        attachments: [
-          {
-            filename: fileName,
-            content: pdfBuffer,
-            contentType:
-              "application/pdf",
-          },
-        ],
-      });
+    attachments: [
+      {
+        filename: fileName,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
+  };
+
+  return transporter.sendMail(
+    mailOptions
+  );
+}
+
+// ======================================================
+// BOOKING ROUTE
+// ======================================================
+
+app.post(
+  "/api/bookings",
+  async (req, res) => {
+    console.log(
+      "======================================"
+    );
+
+    console.log(
+      "📩 New booking request received."
+    );
+
+    console.log(
+      "======================================"
+    );
+
+    try {
+      const data = req.body;
+
+      // ----------------------------------------------
+      // VALIDATION
+      // ----------------------------------------------
+
+      const validationError =
+        validateBooking(data);
+
+      if (validationError) {
+        console.log(
+          "❌ Validation:",
+          validationError
+        );
+
+        return res.status(400).json({
+          success: false,
+          message: validationError,
+        });
+      }
+
+      // ----------------------------------------------
+      // EMAIL CONFIGURATION
+      // ----------------------------------------------
+
+      if (
+        !process.env.GMAIL_USER ||
+        !process.env.GMAIL_APP_PASSWORD ||
+        !process.env.ADMIN_EMAIL
+      ) {
+        console.error(
+          "❌ Email environment variables are missing."
+        );
+
+        return res.status(500).json({
+          success: false,
+          message:
+            "Email configuration is missing on Railway.",
+        });
+      }
+
+      // ----------------------------------------------
+      // GENERATE PDF
+      // ----------------------------------------------
 
       console.log(
-        "✅ Booking email sent successfully."
+        "📄 Generating booking PDF..."
+      );
+
+      const pdfArrayBuffer =
+        generateBookingPDF(data);
+
+      const pdfBuffer =
+        Buffer.from(pdfArrayBuffer);
+
+      console.log(
+        "✅ PDF generated."
+      );
+
+      // ----------------------------------------------
+      // SAFE FILE NAME
+      // ----------------------------------------------
+
+      const safeName =
+        String(data.clientName)
+          .replace(
+            /[^a-z0-9]/gi,
+            "_"
+          )
+          .substring(
+            0,
+            40
+          ) ||
+        "Client";
+
+      const fileName =
+        `PunjabHouse-Booking-${safeName}.pdf`;
+
+      // ----------------------------------------------
+      // SEND EMAIL
+      // ----------------------------------------------
+
+      console.log(
+        "📧 Sending booking email..."
+      );
+
+      try {
+        await sendBookingEmail(
+          data,
+          pdfBuffer,
+          fileName
+        );
+
+        console.log(
+          "✅ Booking email sent successfully."
+        );
+      } catch (emailError) {
+        console.error(
+          "❌ EMAIL SEND FAILED"
+        );
+
+        console.error(
+          "Code:",
+          emailError.code || "UNKNOWN"
+        );
+
+        console.error(
+          "Message:",
+          emailError.message ||
+            "Unknown error"
+        );
+
+        return res.status(503).json({
+          success: false,
+
+          message:
+            "Booking was received, but the email service is currently unavailable. Please try again later.",
+
+          error:
+            process.env.NODE_ENV ===
+            "production"
+              ? undefined
+              : emailError.message,
+        });
+      }
+
+      console.log(
+        "======================================"
       );
 
       return res.status(200).json({
         success: true,
+
         message:
           "Booking submitted successfully.",
       });
 
     } catch (error) {
       console.error(
-        "❌ Booking submission error:",
-        error
+        "❌ Booking submission error:"
       );
+
+      console.error(error);
 
       return res.status(500).json({
         success: false,
+
         message:
           "Unable to process booking.",
+
+        error:
+          process.env.NODE_ENV ===
+          "production"
+            ? undefined
+            : error.message,
       });
     }
   }
@@ -1486,10 +1819,127 @@ ${data.address}
 app.get(
   "/",
   (req, res) => {
-    res.json({
+    return res.status(200).json({
       success: true,
+
       message:
         "Punjab House Booking API is running.",
+
+      status: "online",
+
+      railway:
+        RAILWAY_URL,
+
+      emailConfigured:
+        Boolean(
+          process.env.GMAIL_USER &&
+          process.env.GMAIL_APP_PASSWORD &&
+          process.env.ADMIN_EMAIL
+        ),
+
+      port: PORT,
+    });
+  }
+);
+
+// ======================================================
+// EMAIL STATUS
+// ======================================================
+
+app.get(
+  "/api/email-status",
+  async (req, res) => {
+    if (!transporter) {
+      return res.status(503).json({
+        success: false,
+
+        emailConfigured: false,
+
+        message:
+          "Email transporter is not configured.",
+      });
+    }
+
+    try {
+      await transporter.verify();
+
+      return res.status(200).json({
+        success: true,
+
+        emailConfigured: true,
+
+        smtp:
+          "Gmail SMTP is reachable.",
+
+        message:
+          "Email service is working.",
+      });
+
+    } catch (error) {
+      console.error(
+        "❌ Email status check failed:",
+        error.message
+      );
+
+      return res.status(503).json({
+        success: false,
+
+        emailConfigured: true,
+
+        smtp:
+          "Gmail SMTP is not reachable.",
+
+        code:
+          error.code || "UNKNOWN",
+
+        message:
+          error.message ||
+          "SMTP connection failed.",
+      });
+    }
+  }
+);
+
+// ======================================================
+// 404 HANDLER
+// ======================================================
+
+app.use(
+  (req, res) => {
+    return res.status(404).json({
+      success: false,
+
+      message:
+        `Cannot ${req.method} ${req.originalUrl}`,
+    });
+  }
+);
+
+// ======================================================
+// GLOBAL ERROR HANDLER
+// ======================================================
+
+app.use(
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
+    console.error(
+      "❌ Global server error:",
+      error
+    );
+
+    if (res.headersSent) {
+      return next(error);
+    }
+
+    return res.status(500).json({
+      success: false,
+
+      message:
+        "Internal server error.",
     });
   }
 );
@@ -1500,11 +1950,34 @@ app.get(
 
 app.listen(
   PORT,
-  async () => {
+  "0.0.0.0",
+  () => {
     console.log(
-      `🚀 Server running at http://localhost:${PORT}`
+      "======================================"
     );
 
-    await verifyEmail();
+    console.log(
+      "🚀 Punjab House API started"
+    );
+
+    console.log(
+      `🌐 Railway URL: ${RAILWAY_URL}`
+    );
+
+    console.log(
+      `🚀 Server running on port ${PORT}`
+    );
+
+    console.log(
+      `🌐 Listening on 0.0.0.0:${PORT}`
+    );
+
+    console.log(
+      "======================================"
+    );
+
+    // Do not block server startup
+    // while checking Gmail.
+    verifyEmail();
   }
 );

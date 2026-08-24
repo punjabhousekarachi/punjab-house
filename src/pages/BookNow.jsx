@@ -1,1478 +1,1678 @@
-import React, { useState } from "react";
-import {
-  Calendar,
-  Clock,
-  DoorOpen,
-  User,
-  CreditCard,
-  MapPin,
-  Phone,
-  CheckCircle2,
-  Send,
-  Loader2,
-  FileText,
-} from "lucide-react";
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const dns = require("dns");
+const nodemailer = require("nodemailer");
+const { jsPDF } = require("jspdf");
 
-// =========================================================
-// LIVE BACKEND - RAILWAY
-// =========================================================
+// ======================================================
+// ENVIRONMENT
+// ======================================================
 
-const API_URL =
-  "https://punjab-house-production.up.railway.app";
+dotenv.config();
 
-// =========================================================
-// INITIAL FORM
-// =========================================================
+// Prefer IPv4
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch (error) {
+  console.log("⚠️ IPv4 DNS preference unavailable.");
+}
 
-const initialForm = {
-  eventDate: "",
-  event: "",
-  eventTiming: "07:00 PM - 11:30 PM",
+const app = express();
 
-  lawnRent: "Rs. 500,000/-",
-  lawnRentAgreement: false,
+// Railway provides PORT automatically
+const PORT = process.env.PORT || 5000;
 
-  maintenanceCharges: "Rs. 500,000/-",
-  maintenanceAgreement: false,
+// ======================================================
+// FRONTEND URL
+// ======================================================
 
-  advanceSecurity: "Rs. 100,000/-",
-  advanceAgreement: false,
+const FRONTEND_URL =
+  "https://punjab-house-karachi.netlify.app";
 
-  rooms: "",
-  roomCharges: "",
+// ======================================================
+// CORS
+// ======================================================
 
-  clientName: "",
-  cnic: "",
-  address: "",
-  contactNo: "",
-
-  termsAccepted: false,
-};
-
-// =========================================================
-// EVENT TYPES
-// =========================================================
-
-const eventTypes = [
-  "Wedding",
-  "Reception / Walima",
-  "Nikah Ceremony",
-  "Corporate Event",
-  "Family Gathering",
-  "Other",
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  FRONTEND_URL,
 ];
 
-export default function BookNow() {
-  const [form, setForm] = useState(initialForm);
-
-  const [submitting, setSubmitting] = useState(false);
-
-  const [success, setSuccess] = useState(false);
-
-  const [error, setError] = useState("");
-
-  // =======================================================
-  // TODAY'S DATE
-  // =======================================================
-
-  const today = new Date().toISOString().split("T")[0];
-
-  // =======================================================
-  // UPDATE FIELD
-  // =======================================================
-
-  const updateField = (field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  // =======================================================
-  // ROOM CHARGES
-  // =======================================================
-
-  const calculateRoomCharges = (rooms) => {
-    const count = Number(rooms);
-
-    if (!count || count < 1) {
-      return "";
-    }
-
-    return `Rs. ${(count * 5000).toLocaleString()}/-`;
-  };
-
-  const handleRoomsChange = (value) => {
-    updateField("rooms", value);
-
-    updateField(
-      "roomCharges",
-      calculateRoomCharges(value)
-    );
-  };
-
-  // =======================================================
-  // CLIENT NAME
-  // Allows normal name/designation characters
-  // =======================================================
-
-  const handleClientNameChange = (value) => {
-    const cleaned = value.replace(
-      /[^a-zA-Z\s.,/&'()-]/g,
-      ""
-    );
-
-    updateField("clientName", cleaned);
-  };
-
-  // =======================================================
-  // CNIC
-  // Automatically formats:
-  // 4210112345671
-  // →
-  // 42101-1234567-1
-  // =======================================================
-
-  const handleCNICChange = (value) => {
-    let cleaned = value.replace(/\D/g, "");
-
-    if (cleaned.length > 13) {
-      cleaned = cleaned.slice(0, 13);
-    }
-
-    let formatted = cleaned;
-
-    if (
-      cleaned.length > 5 &&
-      cleaned.length <= 12
-    ) {
-      formatted =
-        cleaned.slice(0, 5) +
-        "-" +
-        cleaned.slice(5);
-    }
-
-    if (cleaned.length > 12) {
-      formatted =
-        cleaned.slice(0, 5) +
-        "-" +
-        cleaned.slice(5, 12) +
-        "-" +
-        cleaned.slice(12);
-    }
-
-    updateField("cnic", formatted);
-  };
-
-  // =======================================================
-  // CONTACT NUMBER
-  // NUMBERS ONLY
-  // =======================================================
-
-  const handlePhoneChange = (value) => {
-    const numbersOnly = value.replace(
-      /[^0-9]/g,
-      ""
-    );
-
-    updateField("contactNo", numbersOnly);
-  };
-
-  // =======================================================
-  // SUBMIT
-  // =======================================================
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    setError("");
-
-    // -----------------------------------------------------
-    // DATE
-    // -----------------------------------------------------
-
-    if (!form.eventDate) {
-      setError(
-        "Please select the event date."
-      );
-      return;
-    }
-
-    if (form.eventDate < today) {
-      setError(
-        "Please select today or a future event date."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // EVENT
-    // -----------------------------------------------------
-
-    if (!form.event) {
-      setError(
-        "Please select an event type."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // EVENT TIMING
-    // -----------------------------------------------------
-
-    if (!form.eventTiming.trim()) {
-      setError(
-        "Please enter the event timing."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // AGREEMENTS
-    // -----------------------------------------------------
-
-    if (!form.lawnRentAgreement) {
-      setError(
-        "Please accept the Lawn Rent agreement."
-      );
-      return;
-    }
-
-    if (!form.maintenanceAgreement) {
-      setError(
-        "Please accept the Maintenance Charges agreement."
-      );
-      return;
-    }
-
-    if (!form.advanceAgreement) {
-      setError(
-        "Please accept the Advance Security agreement."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // ROOMS
-    // -----------------------------------------------------
-
-    if (!form.rooms) {
-      setError(
-        "Please select the number of rooms."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // CLIENT NAME
-    // -----------------------------------------------------
-
-    if (!form.clientName.trim()) {
-      setError(
-        "Please enter the client name."
-      );
-      return;
-    }
-
-    if (
-      form.clientName.trim().length < 2
-    ) {
-      setError(
-        "Client name must contain at least 2 characters."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // CNIC
-    // -----------------------------------------------------
-
-    const cnicRegex =
-      /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
-
-    if (!cnicRegex.test(form.cnic)) {
-      setError(
-        "Please enter a valid CNIC, for example 42101-1234567-1."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // CONTACT NUMBER
-    // -----------------------------------------------------
-
-    const phoneRegex =
-      /^[0-9]{10,15}$/;
-
-    if (!phoneRegex.test(form.contactNo)) {
-      setError(
-        "Please enter a valid contact number using numbers only."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // ADDRESS
-    // -----------------------------------------------------
-
-    if (
-      form.address.trim().length < 10
-    ) {
-      setError(
-        "Please enter your complete address."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // TERMS
-    // -----------------------------------------------------
-
-    if (!form.termsAccepted) {
-      setError(
-        "Please accept the terms and conditions before submitting."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // SUBMITTING
-    // -----------------------------------------------------
-
-    setSubmitting(true);
-
-    try {
-      const response = await fetch(
-        `${API_URL}/api/bookings`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify(form),
-        }
-      );
-
-      let result;
-
-      try {
-        result = await response.json();
-      } catch {
-        throw new Error(
-          "The server returned an invalid response."
-        );
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Postman / curl / server requests
+      if (!origin) {
+        return callback(null, true);
       }
 
-      if (!response.ok) {
-        throw new Error(
-          result.message ||
-            "Booking submission failed."
-        );
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
       }
 
-      // Successful booking
-      setSuccess(true);
+      console.log("⚠️ CORS blocked:", origin);
 
-      setForm(initialForm);
-
-      setError("");
-    } catch (err) {
-      console.error(
-        "Booking submission error:",
-        err
+      return callback(
+        new Error("Not allowed by CORS")
       );
+    },
 
-      setError(
-        err.message ||
-          "Unable to submit booking. Please try again."
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    methods: ["GET", "POST", "OPTIONS"],
 
-  // =======================================================
-  // INPUT STYLES
-  // =======================================================
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+    ],
 
-  const inputClass =
-    "mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#00c874] focus:ring-2 focus:ring-[#00c874]/20";
+    credentials: false,
+  })
+);
 
-  const agreementClass =
-    "flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 cursor-pointer hover:border-[#00c874]/50 transition";
+// Explicit OPTIONS handling
+app.options("*", cors());
 
-  // =======================================================
-  // SUCCESS SCREEN
-  // =======================================================
+// ======================================================
+// BODY PARSER
+// ======================================================
 
-  if (success) {
-    return (
-      <section className="min-h-screen bg-slate-50 py-24 px-5">
-        <div
-          className="
-            max-w-2xl
-            mx-auto
-            bg-white
-            rounded-3xl
-            shadow-xl
-            p-10
-            text-center
-          "
-        >
-          <CheckCircle2
-            className="
-              w-20
-              h-20
-              text-[#00c874]
-              mx-auto
-            "
-          />
+app.use(
+  express.json({
+    limit: "2mb",
+  })
+);
 
-          <h1
-            className="
-              text-3xl
-              font-bold
-              text-slate-900
-              mt-6
-            "
-          >
-            Booking Submitted!
-          </h1>
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "2mb",
+  })
+);
 
-          <p
-            className="
-              text-slate-500
-              mt-3
-              leading-relaxed
-            "
-          >
-            Your booking request has been
-            sent successfully. Our team will
-            review your information and contact
-            you.
-          </p>
+// ======================================================
+// SERVER INFORMATION
+// ======================================================
 
-          <p
-            className="
-              text-sm
-              text-slate-400
-              mt-3
-            "
-          >
-            The completed booking form has been
-            sent to Punjab House as a PDF attachment.
-          </p>
+console.log("======================================");
+console.log("Punjab House Karachi Booking API");
+console.log("======================================");
 
-          <button
-            onClick={() => {
-              setSuccess(false);
-              setError("");
-            }}
-            className="
-              mt-8
-              inline-flex
-              items-center
-              gap-2
-              bg-[#00c874]
-              hover:bg-[#00b368]
-              text-white
-              px-7
-              py-3
-              rounded-full
-              font-semibold
-              transition
-            "
-          >
-            <FileText className="w-4 h-4" />
+console.log(
+  "GMAIL_USER:",
+  process.env.GMAIL_USER ? "SET" : "MISSING"
+);
 
-            Submit Another Booking
-          </button>
-        </div>
-      </section>
+console.log(
+  "GMAIL_APP_PASSWORD:",
+  process.env.GMAIL_APP_PASSWORD
+    ? "SET"
+    : "MISSING"
+);
+
+console.log(
+  "ADMIN_EMAIL:",
+  process.env.ADMIN_EMAIL
+    ? "SET"
+    : "MISSING"
+);
+
+console.log("PORT:", PORT);
+
+console.log("======================================");
+
+// ======================================================
+// GMAIL TRANSPORTER
+// ======================================================
+
+let transporter = null;
+
+if (
+  process.env.GMAIL_USER &&
+  process.env.GMAIL_APP_PASSWORD
+) {
+  transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+
+    port: 587,
+
+    secure: false,
+
+    requireTLS: true,
+
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+
+    family: 4,
+
+    connectionTimeout: 15000,
+
+    greetingTimeout: 15000,
+
+    socketTimeout: 20000,
+
+    tls: {
+      rejectUnauthorized: true,
+    },
+  });
+
+  console.log(
+    "📧 Gmail SMTP transporter created."
+  );
+} else {
+  console.error(
+    "❌ Gmail SMTP transporter was NOT created."
+  );
+}
+
+// ======================================================
+// VERIFY EMAIL
+// ======================================================
+
+async function verifyEmail() {
+  if (!transporter) {
+    console.log(
+      "⚠️ SMTP verification skipped."
+    );
+
+    return false;
+  }
+
+  try {
+    console.log(
+      "📧 Testing Gmail SMTP connection..."
+    );
+
+    await transporter.verify();
+
+    console.log(
+      "✅ Gmail SMTP connection successful."
+    );
+
+    return true;
+  } catch (error) {
+    console.error(
+      "❌ Gmail SMTP connection failed."
+    );
+
+    console.error(
+      "Code:",
+      error.code || "UNKNOWN"
+    );
+
+    console.error(
+      "Message:",
+      error.message || "Unknown error"
+    );
+
+    console.log(
+      "⚠️ Server will continue running."
+    );
+
+    return false;
+  }
+}
+
+// ======================================================
+// ESCAPE HTML
+// ======================================================
+
+function escapeHTML(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// ======================================================
+// PDF GENERATOR
+// ======================================================
+
+function generateBookingPDF(data) {
+  const doc = new jsPDF(
+    "p",
+    "mm",
+    "a4"
+  );
+
+  const GREEN = [0, 200, 116];
+  const DARK = [15, 23, 42];
+  const TEXT = [30, 41, 59];
+  const MUTED = [100, 116, 139];
+  const BORDER = [203, 213, 225];
+  const LIGHT = [248, 250, 252];
+  const GREEN_LIGHT = [236, 253, 245];
+  const RED_LIGHT = [255, 247, 247];
+  const WHITE = [255, 255, 255];
+
+  const PAGE_WIDTH = 210;
+  const LEFT = 15;
+  const RIGHT = 195;
+  const CONTENT_WIDTH = RIGHT - LEFT;
+
+  let y = 15;
+
+  // ====================================================
+  // HEADER
+  // ====================================================
+
+  function drawPageHeader() {
+    doc.setFillColor(...DARK);
+
+    doc.rect(
+      0,
+      0,
+      PAGE_WIDTH,
+      35,
+      "F"
+    );
+
+    // Logo
+    doc.setFillColor(...GREEN);
+
+    doc.circle(
+      25,
+      17.5,
+      7,
+      "F"
+    );
+
+    doc.setTextColor(...WHITE);
+
+    doc.setFont(
+      "helvetica",
+      "bold"
+    );
+
+    doc.setFontSize(9);
+
+    doc.text(
+      "PH",
+      25,
+      20.2,
+      {
+        align: "center",
+      }
+    );
+
+    // Name
+    doc.setTextColor(...WHITE);
+
+    doc.setFont(
+      "helvetica",
+      "bold"
+    );
+
+    doc.setFontSize(15);
+
+    doc.text(
+      "Punjab House",
+      37,
+      15
+    );
+
+    doc.setTextColor(
+      148,
+      163,
+      184
+    );
+
+    doc.setFont(
+      "helvetica",
+      "normal"
+    );
+
+    doc.setFontSize(7);
+
+    doc.text(
+      "EVENT VENUE",
+      37,
+      22
+    );
+
+    // Right
+    doc.setTextColor(...GREEN);
+
+    doc.setFont(
+      "helvetica",
+      "bold"
+    );
+
+    doc.setFontSize(8);
+
+    doc.text(
+      "BOOKING REQUEST FORM",
+      RIGHT,
+      14,
+      {
+        align: "right",
+      }
+    );
+
+    doc.setTextColor(
+      203,
+      213,
+      225
+    );
+
+    doc.setFont(
+      "helvetica",
+      "normal"
+    );
+
+    doc.setFontSize(7);
+
+    doc.text(
+      "GOR-1, Bath Island, Clifton, Karachi",
+      RIGHT,
+      21,
+      {
+        align: "right",
+      }
+    );
+
+    y = 44;
+  }
+
+  // ====================================================
+  // FOOTER
+  // ====================================================
+
+  function drawFooter() {
+    doc.setDrawColor(...BORDER);
+
+    doc.setLineWidth(0.3);
+
+    doc.line(
+      LEFT,
+      280,
+      RIGHT,
+      280
+    );
+
+    doc.setTextColor(...MUTED);
+
+    doc.setFont(
+      "helvetica",
+      "normal"
+    );
+
+    doc.setFontSize(7);
+
+    doc.text(
+      "Punjab House Karachi | Booking Form",
+      LEFT,
+      287
+    );
+
+    doc.text(
+      "Completed Booking Request",
+      RIGHT,
+      287,
+      {
+        align: "right",
+      }
     );
   }
 
-  // =======================================================
-  // PAGE
-  // =======================================================
-
-  return (
-    <section
-      className="
-        min-h-screen
-        bg-slate-50
-        py-16
-        sm:py-24
-      "
-    >
-      <div
-        className="
-          max-w-5xl
-          mx-auto
-          px-5
-          sm:px-8
-        "
-      >
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
-        <div
-          className="
-            text-center
-            max-w-3xl
-            mx-auto
-          "
-        >
-          <span
-            className="
-              text-[#00c874]
-              font-semibold
-              text-xs
-              tracking-[0.25em]
-              uppercase
-            "
-          >
-            Reservation
-          </span>
-
-          <h1
-            className="
-              text-4xl
-              sm:text-5xl
-              font-bold
-              text-slate-900
-              mt-3
-            "
-          >
-            Book Your Event
-          </h1>
-
-          <p
-            className="
-              text-slate-500
-              mt-4
-              leading-relaxed
-            "
-          >
-            Complete the booking form below
-            and our Punjab House team will
-            review your request.
-          </p>
-        </div>
-
-        {/* =================================================
-            FORM
-        ================================================= */}
-
-        <form
-          onSubmit={handleSubmit}
-          className="
-            mt-12
-            bg-white
-            rounded-3xl
-            shadow-xl
-            border
-            border-slate-100
-            p-6
-            sm:p-10
-          "
-        >
-          {/* =================================================
-              EVENT INFORMATION
-          ================================================= */}
-
-          <div>
-            <div
-              className="
-                flex
-                items-center
-                gap-3
-              "
-            >
-              <div
-                className="
-                  w-11
-                  h-11
-                  rounded-xl
-                  bg-[#00c874]/10
-                  text-[#00c874]
-                  flex
-                  items-center
-                  justify-center
-                "
-              >
-                <Calendar className="w-5 h-5" />
-              </div>
-
-              <div>
-                <h2
-                  className="
-                    text-xl
-                    font-bold
-                    text-slate-900
-                  "
-                >
-                  Event Information
-                </h2>
-
-                <p
-                  className="
-                    text-sm
-                    text-slate-500
-                  "
-                >
-                  Tell us about your event.
-                </p>
-              </div>
-            </div>
-
-            <div
-              className="
-                grid
-                md:grid-cols-2
-                gap-5
-                mt-6
-              "
-            >
-              {/* DATE */}
-
-              <div>
-                <label
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  Date of Event *
-                </label>
-
-                <input
-                  required
-                  type="date"
-                  min={today}
-                  value={form.eventDate}
-                  onChange={(e) =>
-                    updateField(
-                      "eventDate",
-                      e.target.value
-                    )
-                  }
-                  className={inputClass}
-                />
-              </div>
-
-              {/* EVENT */}
-
-              <div>
-                <label
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  Event *
-                </label>
-
-                <select
-                  required
-                  value={form.event}
-                  onChange={(e) =>
-                    updateField(
-                      "event",
-                      e.target.value
-                    )
-                  }
-                  className={inputClass}
-                >
-                  <option value="">
-                    Select event
-                  </option>
-
-                  {eventTypes.map(
-                    (event) => (
-                      <option
-                        key={event}
-                        value={event}
-                      >
-                        {event}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-
-              {/* TIMING */}
-
-              <div>
-                <label
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  Event Timing *
-                </label>
-
-                <div className="relative">
-                  <Clock
-                    className="
-                      absolute
-                      left-3
-                      top-1/2
-                      -translate-y-1/2
-                      w-4
-                      h-4
-                      text-[#00c874]
-                    "
-                  />
-
-                  <input
-                    required
-                    type="text"
-                    value={form.eventTiming}
-                    onChange={(e) =>
-                      updateField(
-                        "eventTiming",
-                        e.target.value
-                      )
-                    }
-                    className={`
-                      ${inputClass}
-                      pl-10
-                    `}
-                    placeholder="07:00 PM - 11:30 PM"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* =================================================
-              VENUE CHARGES
-          ================================================= */}
-
-          <div
-            className="
-              border-t
-              border-slate-100
-              mt-10
-              pt-10
-            "
-          >
-            <div
-              className="
-                flex
-                items-center
-                gap-3
-              "
-            >
-              <div
-                className="
-                  w-11
-                  h-11
-                  rounded-xl
-                  bg-[#00c874]/10
-                  text-[#00c874]
-                  flex
-                  items-center
-                  justify-center
-                "
-              >
-                <CreditCard className="w-5 h-5" />
-              </div>
-
-              <div>
-                <h2
-                  className="
-                    text-xl
-                    font-bold
-                    text-slate-900
-                  "
-                >
-                  Venue Charges
-                </h2>
-
-                <p
-                  className="
-                    text-sm
-                    text-slate-500
-                  "
-                >
-                  Review the applicable charges
-                  and agreements.
-                </p>
-              </div>
-            </div>
-
-            <div
-              className="
-                space-y-4
-                mt-6
-              "
-            >
-              {/* LAWN RENT */}
-
-              <label className={agreementClass}>
-                <input
-                  type="checkbox"
-                  checked={
-                    form.lawnRentAgreement
-                  }
-                  onChange={(e) =>
-                    updateField(
-                      "lawnRentAgreement",
-                      e.target.checked
-                    )
-                  }
-                  className="
-                    mt-1
-                    w-4
-                    h-4
-                    accent-[#00c874]
-                  "
-                />
-
-                <div>
-                  <div
-                    className="
-                      font-semibold
-                      text-slate-900
-                    "
-                  >
-                    Lawn Rent —{" "}
-                    {form.lawnRent}
-                  </div>
-
-                  <p
-                    className="
-                      text-sm
-                      text-slate-500
-                      mt-1
-                    "
-                  >
-                    I agree to the Lawn Rent
-                    terms and conditions.
-                  </p>
-                </div>
-              </label>
-
-              {/* MAINTENANCE */}
-
-              <label className={agreementClass}>
-                <input
-                  type="checkbox"
-                  checked={
-                    form.maintenanceAgreement
-                  }
-                  onChange={(e) =>
-                    updateField(
-                      "maintenanceAgreement",
-                      e.target.checked
-                    )
-                  }
-                  className="
-                    mt-1
-                    w-4
-                    h-4
-                    accent-[#00c874]
-                  "
-                />
-
-                <div>
-                  <div
-                    className="
-                      font-semibold
-                      text-slate-900
-                    "
-                  >
-                    Maintenance Charges —{" "}
-                    {form.maintenanceCharges}
-                  </div>
-
-                  <p
-                    className="
-                      text-sm
-                      text-slate-500
-                      mt-1
-                    "
-                  >
-                    I agree to the maintenance
-                    charges and agreement.
-                  </p>
-                </div>
-              </label>
-
-              {/* SECURITY */}
-
-              <label className={agreementClass}>
-                <input
-                  type="checkbox"
-                  checked={
-                    form.advanceAgreement
-                  }
-                  onChange={(e) =>
-                    updateField(
-                      "advanceAgreement",
-                      e.target.checked
-                    )
-                  }
-                  className="
-                    mt-1
-                    w-4
-                    h-4
-                    accent-[#00c874]
-                  "
-                />
-
-                <div>
-                  <div
-                    className="
-                      font-semibold
-                      text-slate-900
-                    "
-                  >
-                    Advance / Refundable Security —{" "}
-                    {form.advanceSecurity}
-                  </div>
-
-                  <p
-                    className="
-                      text-sm
-                      text-slate-500
-                      mt-1
-                    "
-                  >
-                    I agree to the advance
-                    security terms.
-                  </p>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* =================================================
-              ROOMS
-          ================================================= */}
-
-          <div
-            className="
-              border-t
-              border-slate-100
-              mt-10
-              pt-10
-            "
-          >
-            <div
-              className="
-                flex
-                items-center
-                gap-3
-              "
-            >
-              <div
-                className="
-                  w-11
-                  h-11
-                  rounded-xl
-                  bg-[#00c874]/10
-                  text-[#00c874]
-                  flex
-                  items-center
-                  justify-center
-                "
-              >
-                <DoorOpen className="w-5 h-5" />
-              </div>
-
-              <div>
-                <h2
-                  className="
-                    text-xl
-                    font-bold
-                    text-slate-900
-                  "
-                >
-                  Rooms
-                </h2>
-
-                <p
-                  className="
-                    text-sm
-                    text-slate-500
-                  "
-                >
-                  Maximum 2 rooms available.
-                  Rs. 5,000 per room.
-                </p>
-              </div>
-            </div>
-
-            <div
-              className="
-                grid
-                md:grid-cols-2
-                gap-5
-                mt-6
-              "
-            >
-              {/* ROOMS */}
-
-              <div>
-                <label
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  No. of Rooms *
-                </label>
-
-                <select
-                  required
-                  value={form.rooms}
-                  onChange={(e) =>
-                    handleRoomsChange(
-                      e.target.value
-                    )
-                  }
-                  className={inputClass}
-                >
-                  <option
-                    value=""
-                    disabled
-                  >
-                    Select number of rooms
-                  </option>
-
-                  <option value="1">
-                    1 Room
-                  </option>
-
-                  <option value="2">
-                    2 Rooms
-                  </option>
-                </select>
-              </div>
-
-              {/* ROOM CHARGES */}
-
-              <div>
-                <label
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  Room Charges
-                </label>
-
-                <input
-                  readOnly
-                  value={form.roomCharges}
-                  className={`
-                    ${inputClass}
-                    bg-slate-50
-                  `}
-                  placeholder="Automatically calculated"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* =================================================
-              CLIENT INFORMATION
-          ================================================= */}
-
-          <div
-            className="
-              border-t
-              border-slate-100
-              mt-10
-              pt-10
-            "
-          >
-            <div
-              className="
-                flex
-                items-center
-                gap-3
-              "
-            >
-              <div
-                className="
-                  w-11
-                  h-11
-                  rounded-xl
-                  bg-[#00c874]/10
-                  text-[#00c874]
-                  flex
-                  items-center
-                  justify-center
-                "
-              >
-                <User className="w-5 h-5" />
-              </div>
-
-              <div>
-                <h2
-                  className="
-                    text-xl
-                    font-bold
-                    text-slate-900
-                  "
-                >
-                  Client Information
-                </h2>
-
-                <p
-                  className="
-                    text-sm
-                    text-slate-500
-                  "
-                >
-                  Enter your personal and
-                  contact information.
-                </p>
-              </div>
-            </div>
-
-            <div
-              className="
-                grid
-                md:grid-cols-2
-                gap-5
-                mt-6
-              "
-            >
-              {/* NAME */}
-
-              <div className="md:col-span-2">
-                <label
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  Name of Client & Designation / C/o *
-                </label>
-
-                <input
-                  required
-                  type="text"
-                  minLength={2}
-                  maxLength={80}
-                  value={form.clientName}
-                  onChange={(e) =>
-                    handleClientNameChange(
-                      e.target.value
-                    )
-                  }
-                  className={inputClass}
-                  placeholder="Enter client name and designation / C/o"
-                />
-              </div>
-
-              {/* CNIC */}
-
-              <div>
-                <label
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  C.N.I. No. *
-                </label>
-
-                <input
-                  required
-                  type="text"
-                  inputMode="numeric"
-                  value={form.cnic}
-                  onChange={(e) =>
-                    handleCNICChange(
-                      e.target.value
-                    )
-                  }
-                  pattern="[0-9]{5}-[0-9]{7}-[0-9]{1}"
-                  maxLength={15}
-                  className={inputClass}
-                  placeholder="42101-1234567-1"
-                />
-              </div>
-
-              {/* CONTACT */}
-
-              <div>
-                <label
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  Contact No. *
-                </label>
-
-                <div className="relative">
-                  <Phone
-                    className="
-                      absolute
-                      left-3
-                      top-1/2
-                      -translate-y-1/2
-                      w-4
-                      h-4
-                      text-[#00c874]
-                    "
-                  />
-
-                  <input
-                    required
-                    type="tel"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    minLength={10}
-                    maxLength={15}
-                    value={form.contactNo}
-                    onChange={(e) =>
-                      handlePhoneChange(
-                        e.target.value
-                      )
-                    }
-                    className={`
-                      ${inputClass}
-                      pl-10
-                    `}
-                    placeholder="03001234567"
-                  />
-                </div>
-
-                <p
-                  className="
-                    text-xs
-                    text-slate-400
-                    mt-2
-                  "
-                >
-                  Enter numbers only.
-                </p>
-              </div>
-
-              {/* ADDRESS */}
-
-              <div className="md:col-span-2">
-                <label
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  Address *
-                </label>
-
-                <div className="relative">
-                  <MapPin
-                    className="
-                      absolute
-                      left-3
-                      top-4
-                      w-4
-                      h-4
-                      text-[#00c874]
-                    "
-                  />
-
-                  <textarea
-                    required
-                    minLength={10}
-                    maxLength={300}
-                    rows={3}
-                    value={form.address}
-                    onChange={(e) =>
-                      updateField(
-                        "address",
-                        e.target.value
-                      )
-                    }
-                    className={`
-                      ${inputClass}
-                      pl-10
-                      resize-none
-                    `}
-                    placeholder="Enter your complete address"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* =================================================
-              TERMS
-          ================================================= */}
-
-          <div
-            className="
-              border-t
-              border-slate-100
-              mt-10
-              pt-10
-            "
-          >
-            <label
-              className="
-                flex
-                items-start
-                gap-3
-                rounded-2xl
-                border
-                border-[#00c874]/20
-                bg-[#00c874]/5
-                p-5
-                cursor-pointer
-              "
-            >
-              <input
-                type="checkbox"
-                checked={form.termsAccepted}
-                onChange={(e) =>
-                  updateField(
-                    "termsAccepted",
-                    e.target.checked
-                  )
-                }
-                className="
-                  mt-1
-                  w-5
-                  h-5
-                  accent-[#00c874]
-                "
-              />
-
-              <div>
-                <div
-                  className="
-                    font-semibold
-                    text-slate-900
-                  "
-                >
-                  I have read and accepted all
-                  terms and conditions *
-                </div>
-
-                <p
-                  className="
-                    text-sm
-                    text-slate-500
-                    mt-1
-                  "
-                >
-                  By submitting this booking request,
-                  I confirm that the information provided
-                  is correct and that I accept the Punjab
-                  House booking terms.
-                </p>
-              </div>
-            </label>
-          </div>
-
-          {/* =================================================
-              ERROR
-          ================================================= */}
-
-          {error && (
-            <div
-              className="
-                mt-6
-                rounded-xl
-                bg-red-50
-                border
-                border-red-200
-                text-red-700
-                px-4
-                py-3
-                text-sm
-              "
-            >
-              {error}
-            </div>
-          )}
-
-          {/* =================================================
-              SUBMIT BUTTON
-          ================================================= */}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="
-              mt-8
-              w-full
-              inline-flex
-              items-center
-              justify-center
-              gap-2
-              bg-[#00c874]
-              hover:bg-[#00b368]
-              disabled:opacity-60
-              disabled:cursor-not-allowed
-              text-white
-              px-6
-              py-4
-              rounded-full
-              font-bold
-              text-lg
-              transition
-              shadow-xl
-              shadow-[#00c874]/20
-            "
-          >
-            {submitting ? (
-              <>
-                <Loader2
-                  className="
-                    w-5
-                    h-5
-                    animate-spin
-                  "
-                />
-
-                Submitting Booking...
-              </>
-            ) : (
-              <>
-                <Send className="w-5 h-5" />
-
-                Submit Booking
-              </>
-            )}
-          </button>
-
-          <p
-            className="
-              text-center
-              text-xs
-              text-slate-400
-              mt-4
-            "
-          >
-            Your booking information will be sent
-            securely to Punjab House.
-          </p>
-        </form>
-      </div>
-    </section>
+  // ====================================================
+  // NEW PAGE
+  // ====================================================
+
+  function addNewPage() {
+    drawFooter();
+
+    doc.addPage();
+
+    drawPageHeader();
+  }
+
+  // ====================================================
+  // SPACE
+  // ====================================================
+
+  function ensureSpace(height = 20) {
+    if (y + height > 270) {
+      addNewPage();
+    }
+  }
+
+  // ====================================================
+  // SECTION
+  // ====================================================
+
+  function drawSectionHeading(
+    title,
+    subtitle = ""
+  ) {
+    ensureSpace(23);
+
+    doc.setFillColor(...LIGHT);
+
+    doc.roundedRect(
+      LEFT,
+      y,
+      CONTENT_WIDTH,
+      15,
+      3,
+      3,
+      "F"
+    );
+
+    doc.setFillColor(...GREEN);
+
+    doc.roundedRect(
+      LEFT,
+      y,
+      3,
+      15,
+      1.5,
+      1.5,
+      "F"
+    );
+
+    doc.setTextColor(...DARK);
+
+    doc.setFont(
+      "helvetica",
+      "bold"
+    );
+
+    doc.setFontSize(11);
+
+    doc.text(
+      title,
+      LEFT + 8,
+      y + 7
+    );
+
+    if (subtitle) {
+      doc.setTextColor(...MUTED);
+
+      doc.setFont(
+        "helvetica",
+        "normal"
+      );
+
+      doc.setFontSize(7);
+
+      doc.text(
+        subtitle,
+        LEFT + 8,
+        y + 12
+      );
+    }
+
+    y += 21;
+  }
+
+  // ====================================================
+  // FIELD
+  // ====================================================
+
+  function drawField(
+    label,
+    value,
+    options = {}
+  ) {
+    const {
+      width = CONTENT_WIDTH,
+      height = 14,
+      multiline = false,
+    } = options;
+
+    ensureSpace(height + 7);
+
+    doc.setTextColor(...TEXT);
+
+    doc.setFont(
+      "helvetica",
+      "bold"
+    );
+
+    doc.setFontSize(8);
+
+    doc.text(
+      label,
+      LEFT,
+      y
+    );
+
+    y += 3;
+
+    doc.setFillColor(...WHITE);
+
+    doc.setDrawColor(...BORDER);
+
+    doc.setLineWidth(0.35);
+
+    doc.roundedRect(
+      LEFT,
+      y,
+      width,
+      height,
+      2,
+      2,
+      "FD"
+    );
+
+    const safeValue =
+      value || " ";
+
+    const lines =
+      doc.splitTextToSize(
+        String(safeValue),
+        width - 8
+      );
+
+    doc.setTextColor(...TEXT);
+
+    doc.setFont(
+      "helvetica",
+      "normal"
+    );
+
+    doc.setFontSize(8);
+
+    if (multiline) {
+      doc.text(
+        lines,
+        LEFT + 4,
+        y + 5
+      );
+    } else {
+      doc.text(
+        lines.slice(0, 1),
+        LEFT + 4,
+        y + 8
+      );
+    }
+
+    y += height + 7;
+  }
+
+  // ====================================================
+  // TWO FIELDS
+  // ====================================================
+
+  function drawTwoFields(
+    leftField,
+    rightField
+  ) {
+    const gap = 6;
+
+    const width =
+      (CONTENT_WIDTH - gap) / 2;
+
+    ensureSpace(28);
+
+    doc.setTextColor(...TEXT);
+
+    doc.setFont(
+      "helvetica",
+      "bold"
+    );
+
+    doc.setFontSize(8);
+
+    doc.text(
+      leftField.label,
+      LEFT,
+      y
+    );
+
+    doc.text(
+      rightField.label,
+      LEFT + width + gap,
+      y
+    );
+
+    y += 3;
+
+    doc.setFillColor(...WHITE);
+
+    doc.setDrawColor(...BORDER);
+
+    doc.setLineWidth(0.35);
+
+    doc.roundedRect(
+      LEFT,
+      y,
+      width,
+      14,
+      2,
+      2,
+      "FD"
+    );
+
+    doc.roundedRect(
+      LEFT + width + gap,
+      y,
+      width,
+      14,
+      2,
+      2,
+      "FD"
+    );
+
+    doc.setTextColor(...TEXT);
+
+    doc.setFont(
+      "helvetica",
+      "normal"
+    );
+
+    doc.setFontSize(8);
+
+    doc.text(
+      String(leftField.value || "-"),
+      LEFT + 4,
+      y + 8
+    );
+
+    doc.text(
+      String(rightField.value || "-"),
+      LEFT + width + gap + 4,
+      y + 8
+    );
+
+    y += 21;
+  }
+
+  // ====================================================
+  // CHECKMARK
+  // ====================================================
+
+  function drawCheckmark(
+    x,
+    yPos,
+    size = 10
+  ) {
+    doc.setDrawColor(...WHITE);
+
+    doc.setLineWidth(1.4);
+
+    doc.line(
+      x + size * 0.2,
+      yPos + size * 0.5,
+      x + size * 0.42,
+      yPos + size * 0.74
+    );
+
+    doc.line(
+      x + size * 0.42,
+      yPos + size * 0.74,
+      x + size * 0.82,
+      yPos + size * 0.25
+    );
+  }
+
+  // ====================================================
+  // AGREEMENT
+  // ====================================================
+
+  function drawAgreementBox(
+    title,
+    amount,
+    accepted
+  ) {
+    ensureSpace(28);
+
+    doc.setFillColor(
+      ...(accepted
+        ? GREEN_LIGHT
+        : RED_LIGHT)
+    );
+
+    doc.setDrawColor(...BORDER);
+
+    doc.setLineWidth(0.4);
+
+    doc.roundedRect(
+      LEFT,
+      y,
+      CONTENT_WIDTH,
+      21,
+      3,
+      3,
+      "FD"
+    );
+
+    const checkboxX =
+      LEFT + 5;
+
+    const checkboxY =
+      y + 5;
+
+    const checkboxSize = 10;
+
+    if (accepted) {
+      doc.setFillColor(...GREEN);
+
+      doc.setDrawColor(...GREEN);
+
+      doc.roundedRect(
+        checkboxX,
+        checkboxY,
+        checkboxSize,
+        checkboxSize,
+        1.5,
+        1.5,
+        "FD"
+      );
+
+      drawCheckmark(
+        checkboxX,
+        checkboxY,
+        checkboxSize
+      );
+    } else {
+      doc.setFillColor(...WHITE);
+
+      doc.setDrawColor(...MUTED);
+
+      doc.roundedRect(
+        checkboxX,
+        checkboxY,
+        checkboxSize,
+        checkboxSize,
+        1.5,
+        1.5,
+        "FD"
+      );
+    }
+
+    doc.setTextColor(...TEXT);
+
+    doc.setFont(
+      "helvetica",
+      "bold"
+    );
+
+    doc.setFontSize(8.5);
+
+    doc.text(
+      title,
+      LEFT + 20,
+      y + 8
+    );
+
+    doc.setTextColor(...GREEN);
+
+    doc.setFont(
+      "helvetica",
+      "bold"
+    );
+
+    doc.setFontSize(8);
+
+    doc.text(
+      String(amount || "-"),
+      LEFT + 20,
+      y + 14
+    );
+
+    doc.setTextColor(...MUTED);
+
+    doc.setFont(
+      "helvetica",
+      "normal"
+    );
+
+    doc.setFontSize(7);
+
+    doc.text(
+      accepted
+        ? "Accepted"
+        : "Not Accepted",
+      RIGHT - 5,
+      y + 11,
+      {
+        align: "right",
+      }
+    );
+
+    y += 27;
+  }
+
+  // ====================================================
+  // START
+  // ====================================================
+
+  drawPageHeader();
+
+  doc.setTextColor(...DARK);
+
+  doc.setFont(
+    "helvetica",
+    "bold"
+  );
+
+  doc.setFontSize(18);
+
+  doc.text(
+    "Event Booking Form",
+    PAGE_WIDTH / 2,
+    y,
+    {
+      align: "center",
+    }
+  );
+
+  doc.setTextColor(...MUTED);
+
+  doc.setFont(
+    "helvetica",
+    "normal"
+  );
+
+  doc.setFontSize(8);
+
+  doc.text(
+    "Completed booking information",
+    PAGE_WIDTH / 2,
+    y + 6,
+    {
+      align: "center",
+    }
+  );
+
+  y += 16;
+
+  // ====================================================
+  // EVENT
+  // ====================================================
+
+  drawSectionHeading(
+    "Event Information",
+    "Tell us about your event"
+  );
+
+  drawTwoFields(
+    {
+      label: "Date of Event *",
+      value: data.eventDate,
+    },
+    {
+      label: "Event *",
+      value: data.event,
+    }
+  );
+
+  drawField(
+    "Event Timing *",
+    data.eventTiming
+  );
+
+  // ====================================================
+  // CHARGES
+  // ====================================================
+
+  drawSectionHeading(
+    "Venue Charges",
+    "Review the applicable charges and agreements"
+  );
+
+  drawAgreementBox(
+    "Lawn Rent",
+    data.lawnRent,
+    data.lawnRentAgreement
+  );
+
+  drawAgreementBox(
+    "Maintenance Charges",
+    data.maintenanceCharges,
+    data.maintenanceAgreement
+  );
+
+  drawAgreementBox(
+    "Advance / Refundable Security",
+    data.advanceSecurity,
+    data.advanceAgreement
+  );
+
+  // ====================================================
+  // ROOMS
+  // ====================================================
+
+  drawSectionHeading(
+    "Rooms",
+    "Maximum 2 rooms available. Rs. 5,000 per room."
+  );
+
+  drawTwoFields(
+    {
+      label: "No. of Rooms *",
+      value: `${data.rooms} ${
+        Number(data.rooms) === 1
+          ? "Room"
+          : "Rooms"
+      }`,
+    },
+    {
+      label: "Room Charges",
+      value:
+        data.roomCharges ||
+        "Rs. 0/-",
+    }
+  );
+
+  // ====================================================
+  // CLIENT
+  // ====================================================
+
+  drawSectionHeading(
+    "Client Information",
+    "Personal and contact information"
+  );
+
+  drawField(
+    "Name of Client & Designation / C/o *",
+    data.clientName
+  );
+
+  drawTwoFields(
+    {
+      label: "C.N.I. No. *",
+      value: data.cnic,
+    },
+    {
+      label: "Contact No. *",
+      value: data.contactNo,
+    }
+  );
+
+  drawField(
+    "Address *",
+    data.address,
+    {
+      height: 28,
+      multiline: true,
+    }
+  );
+
+  // ====================================================
+  // TERMS
+  // ====================================================
+
+  drawSectionHeading(
+    "Terms & Conditions",
+    "Applicant confirmation"
+  );
+
+  drawAgreementBox(
+    "I have read and accepted all terms and conditions",
+    "Accepted",
+    data.termsAccepted
+  );
+
+  // ====================================================
+  // FINAL
+  // ====================================================
+
+  ensureSpace(35);
+
+  doc.setFillColor(...GREEN);
+
+  doc.roundedRect(
+    LEFT,
+    y,
+    CONTENT_WIDTH,
+    27,
+    4,
+    4,
+    "F"
+  );
+
+  doc.setTextColor(...WHITE);
+
+  doc.setFont(
+    "helvetica",
+    "bold"
+  );
+
+  doc.setFontSize(11);
+
+  doc.text(
+    "Booking Request Completed",
+    PAGE_WIDTH / 2,
+    y + 10,
+    {
+      align: "center",
+    }
+  );
+
+  doc.setFont(
+    "helvetica",
+    "normal"
+  );
+
+  doc.setFontSize(7.5);
+
+  doc.text(
+    "The information above has been submitted to Punjab House.",
+    PAGE_WIDTH / 2,
+    y + 17,
+    {
+      align: "center",
+    }
+  );
+
+  drawFooter();
+
+  return doc.output("arraybuffer");
+}
+
+// ======================================================
+// VALIDATE BOOKING
+// ======================================================
+
+function validateBooking(data) {
+  if (!data || typeof data !== "object") {
+    return "Invalid booking data.";
+  }
+
+  if (!data.eventDate) {
+    return "Event date is required.";
+  }
+
+  if (!data.event) {
+    return "Event type is required.";
+  }
+
+  if (!data.eventTiming) {
+    return "Event timing is required.";
+  }
+
+  if (!data.lawnRentAgreement) {
+    return "Lawn Rent agreement is required.";
+  }
+
+  if (!data.maintenanceAgreement) {
+    return "Maintenance Charges agreement is required.";
+  }
+
+  if (!data.advanceAgreement) {
+    return "Advance Security agreement is required.";
+  }
+
+  if (
+    !["1", "2"].includes(
+      String(data.rooms)
+    )
+  ) {
+    return "Please select 1 or 2 rooms.";
+  }
+
+  if (
+    !data.clientName ||
+    typeof data.clientName !== "string" ||
+    !data.clientName.trim()
+  ) {
+    return "Client name is required.";
+  }
+
+  const cnicRegex =
+    /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
+
+  if (
+    !cnicRegex.test(
+      String(data.cnic || "")
+    )
+  ) {
+    return "Invalid CNIC format. Use 00000-0000000-0.";
+  }
+
+  const phone =
+    String(data.contactNo || "")
+      .replace(/[\s-]/g, "");
+
+  const phoneRegex =
+    /^[0-9]{10,15}$/;
+
+  if (!phoneRegex.test(phone)) {
+    return "Invalid contact number.";
+  }
+
+  if (
+    !data.address ||
+    typeof data.address !== "string" ||
+    data.address.trim().length < 10
+  ) {
+    return "Complete address is required.";
+  }
+
+  if (!data.termsAccepted) {
+    return "Terms and conditions must be accepted.";
+  }
+
+  return null;
+}
+
+// ======================================================
+// EMAIL HTML
+// ======================================================
+
+function createEmailHTML(data) {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Punjab House Booking</title>
+</head>
+
+<body style="
+margin:0;
+padding:0;
+background:#f8fafc;
+font-family:Arial,sans-serif;
+">
+
+<div style="
+max-width:700px;
+margin:30px auto;
+background:#ffffff;
+border-radius:18px;
+overflow:hidden;
+border:1px solid #e2e8f0;
+">
+
+<div style="
+background:#0f172a;
+padding:30px;
+text-align:center;
+">
+
+<h1 style="
+margin:0;
+color:#ffffff;
+font-size:28px;
+">
+Punjab House
+</h1>
+
+<p style="
+margin:8px 0 0;
+color:#00c874;
+font-size:12px;
+font-weight:bold;
+letter-spacing:2px;
+">
+NEW BOOKING REQUEST
+</p>
+
+</div>
+
+<div style="padding:30px;">
+
+<h2 style="color:#0f172a;">
+Booking Details
+</h2>
+
+<table style="
+width:100%;
+border-collapse:collapse;
+">
+
+${[
+  ["Client Name", data.clientName],
+  ["Event Date", data.eventDate],
+  ["Event", data.event],
+  ["Event Timing", data.eventTiming],
+  ["Lawn Rent", data.lawnRent],
+  [
+    "Lawn Rent Agreement",
+    data.lawnRentAgreement
+      ? "Accepted"
+      : "Not Accepted",
+  ],
+  [
+    "Maintenance Charges",
+    data.maintenanceCharges,
+  ],
+  [
+    "Maintenance Agreement",
+    data.maintenanceAgreement
+      ? "Accepted"
+      : "Not Accepted",
+  ],
+  [
+    "Advance Security",
+    data.advanceSecurity,
+  ],
+  [
+    "Advance Agreement",
+    data.advanceAgreement
+      ? "Accepted"
+      : "Not Accepted",
+  ],
+  ["Rooms", data.rooms],
+  [
+    "Room Charges",
+    data.roomCharges || "Rs. 0/-",
+  ],
+  ["CNIC", data.cnic],
+  ["Contact No.", data.contactNo],
+  ["Address", data.address],
+]
+  .map(
+    ([label, value]) => `
+<tr>
+<td style="
+padding:9px 0;
+color:#64748b;
+font-weight:bold;
+vertical-align:top;
+">
+${escapeHTML(label)}
+</td>
+
+<td style="
+padding:9px 0;
+color:#0f172a;
+">
+${escapeHTML(value)}
+</td>
+</tr>
+`
+  )
+  .join("")}
+
+</table>
+
+<div style="
+margin-top:24px;
+padding:18px;
+border-radius:12px;
+background:#ecfdf5;
+border:1px solid #bbf7d0;
+">
+
+<strong style="color:#047857;">
+Completed Booking Form Attached
+</strong>
+
+<p style="
+margin:7px 0 0;
+color:#64748b;
+font-size:14px;
+">
+The complete filled booking form is attached
+to this email as a PDF.
+</p>
+
+</div>
+
+</div>
+
+<div style="
+padding:18px 30px;
+background:#f8fafc;
+border-top:1px solid #e2e8f0;
+text-align:center;
+color:#64748b;
+font-size:12px;
+">
+
+Punjab House Karachi |
+GOR-1, Bath Island, Clifton, Karachi
+
+</div>
+
+</div>
+
+</body>
+</html>
+`;
+}
+
+// ======================================================
+// SEND EMAIL
+// ======================================================
+
+async function sendBookingEmail(
+  data,
+  pdfBuffer,
+  fileName
+) {
+  if (!transporter) {
+    throw new Error(
+      "Email transporter is not configured."
+    );
+  }
+
+  const mailOptions = {
+    from:
+      `"Punjab House Website" <${process.env.GMAIL_USER}>`,
+
+    to:
+      process.env.ADMIN_EMAIL,
+
+    subject:
+      `New Punjab House Booking - ${data.clientName}`,
+
+    text: `
+New Punjab House Booking
+
+Client Name: ${data.clientName}
+Event Date: ${data.eventDate}
+Event: ${data.event}
+Event Timing: ${data.eventTiming}
+
+Lawn Rent: ${data.lawnRent}
+Maintenance Charges: ${data.maintenanceCharges}
+Advance Security: ${data.advanceSecurity}
+
+Rooms: ${data.rooms}
+Room Charges: ${data.roomCharges || "Rs. 0/-"}
+
+CNIC: ${data.cnic}
+Contact: ${data.contactNo}
+
+Address:
+${data.address}
+`,
+
+    html: createEmailHTML(data),
+
+    attachments: [
+      {
+        filename: fileName,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
+  };
+
+  return transporter.sendMail(
+    mailOptions
   );
 }
+
+// ======================================================
+// BOOKING API
+// ======================================================
+
+app.post(
+  "/api/bookings",
+  async (req, res) => {
+    console.log(
+      "======================================"
+    );
+
+    console.log(
+      "📩 NEW BOOKING REQUEST"
+    );
+
+    console.log(
+      "======================================"
+    );
+
+    try {
+      const data = req.body;
+
+      // Validation
+      const validationError =
+        validateBooking(data);
+
+      if (validationError) {
+        console.log(
+          "❌ Validation:",
+          validationError
+        );
+
+        return res.status(400).json({
+          success: false,
+          message: validationError,
+        });
+      }
+
+      // Email configuration
+      if (
+        !process.env.GMAIL_USER ||
+        !process.env.GMAIL_APP_PASSWORD ||
+        !process.env.ADMIN_EMAIL
+      ) {
+        console.error(
+          "❌ Missing email environment variables."
+        );
+
+        return res.status(500).json({
+          success: false,
+          message:
+            "Email configuration is missing on Railway.",
+        });
+      }
+
+      // Generate PDF
+      console.log(
+        "📄 Generating PDF..."
+      );
+
+      const pdfArrayBuffer =
+        generateBookingPDF(data);
+
+      const pdfBuffer =
+        Buffer.from(pdfArrayBuffer);
+
+      console.log(
+        "✅ PDF generated."
+      );
+
+      // Safe filename
+      const safeName =
+        String(data.clientName)
+          .replace(
+            /[^a-z0-9]/gi,
+            "_"
+          )
+          .substring(0, 40) ||
+        "Client";
+
+      const fileName =
+        `PunjabHouse-Booking-${safeName}.pdf`;
+
+      // Send email
+      console.log(
+        "📧 Sending email..."
+      );
+
+      await sendBookingEmail(
+        data,
+        pdfBuffer,
+        fileName
+      );
+
+      console.log(
+        "✅ Booking email sent successfully."
+      );
+
+      console.log(
+        "======================================"
+      );
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Booking submitted successfully.",
+      });
+
+    } catch (error) {
+      console.error(
+        "❌ BOOKING ERROR"
+      );
+
+      console.error(
+        "Code:",
+        error.code || "UNKNOWN"
+      );
+
+      console.error(
+        "Message:",
+        error.message || "Unknown error"
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to process booking.",
+        error:
+          process.env.NODE_ENV === "production"
+            ? undefined
+            : error.message,
+      });
+    }
+  }
+);
+
+// ======================================================
+// HEALTH CHECK
+// ======================================================
+
+app.get(
+  "/",
+  (req, res) => {
+    return res.status(200).json({
+      success: true,
+
+      message:
+        "Punjab House Booking API is running.",
+
+      status: "online",
+
+      emailConfigured:
+        Boolean(
+          process.env.GMAIL_USER &&
+          process.env.GMAIL_APP_PASSWORD &&
+          process.env.ADMIN_EMAIL
+        ),
+
+      port: PORT,
+    });
+  }
+);
+
+// ======================================================
+// EMAIL STATUS
+// ======================================================
+
+app.get(
+  "/api/email-status",
+  async (req, res) => {
+    if (!transporter) {
+      return res.status(503).json({
+        success: false,
+        emailConfigured: false,
+        message:
+          "Email transporter is not configured.",
+      });
+    }
+
+    try {
+      await transporter.verify();
+
+      return res.status(200).json({
+        success: true,
+        emailConfigured: true,
+        smtp:
+          "Gmail SMTP is reachable.",
+        message:
+          "Email service is working.",
+      });
+
+    } catch (error) {
+      return res.status(503).json({
+        success: false,
+        emailConfigured: true,
+        smtp:
+          "Gmail SMTP is not reachable.",
+        code:
+          error.code || "UNKNOWN",
+        message:
+          error.message ||
+          "SMTP connection failed.",
+      });
+    }
+  }
+);
+
+// ======================================================
+// 404
+// ======================================================
+
+app.use(
+  (req, res) => {
+    return res.status(404).json({
+      success: false,
+      message:
+        `Cannot ${req.method} ${req.originalUrl}`,
+    });
+  }
+);
+
+// ======================================================
+// GLOBAL ERROR
+// ======================================================
+
+app.use(
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
+    console.error(
+      "❌ Global server error:",
+      error
+    );
+
+    if (res.headersSent) {
+      return next(error);
+    }
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Internal server error.",
+    });
+  }
+);
+
+// ======================================================
+// START SERVER
+// ======================================================
+
+app.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+    console.log(
+      "======================================"
+    );
+
+    console.log(
+      `🚀 Punjab House API running on port ${PORT}`
+    );
+
+    console.log(
+      "🌐 Railway server listening on 0.0.0.0"
+    );
+
+    console.log(
+      `🌍 Frontend: ${FRONTEND_URL}`
+    );
+
+    console.log(
+      "======================================"
+    );
+
+    // Do not block server startup
+    verifyEmail();
+  }
+);

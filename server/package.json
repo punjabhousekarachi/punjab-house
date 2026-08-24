@@ -1,14 +1,13 @@
 {
-  "name": "server",
+  "name": "punjab-house-booking-api",
   "version": "1.0.0",
-  "description": "",
+  "description": "Punjab House Karachi Booking API",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Punjab House Karachi",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
@@ -16,6 +15,6 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jspdf": "^4.2.1",
-    "nodemailer": "^9.0.5"
+    "nodemailer": "^7.0.6"
   }
 }
