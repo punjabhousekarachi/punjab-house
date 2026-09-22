@@ -25,21 +25,27 @@ export default function Hero() {
     >
       {/* =====================================================
           BACKGROUND IMAGE
-          (replaces the old autoplaying videos, which were
-          causing the site to lag)
+          Optimized WebP image instead of large PNG/video
       ====================================================== */}
-
       <div
         className="absolute inset-0 overflow-hidden bg-black bg-cover bg-center"
-        style={{ backgroundImage: "url('/hero.png')" }}
+        style={{
+          backgroundImage: "url('/hero.webp')",
+        }}
+        aria-hidden="true"
       />
 
       {/* =====================================================
-          OVERLAY
+          DARK OVERLAY
       ====================================================== */}
+      <div
+        className="absolute inset-0 bg-black/25 pointer-events-none"
+        aria-hidden="true"
+      />
 
-      <div className="absolute inset-0 bg-black/25 pointer-events-none" />
-
+      {/* =====================================================
+          GRADIENT OVERLAY
+      ====================================================== */}
       <div
         className="
           absolute
@@ -50,12 +56,12 @@ export default function Hero() {
           to-black/55
           pointer-events-none
         "
+        aria-hidden="true"
       />
 
       {/* =====================================================
-          GREEN GLOW
+          GREEN GLOW - TOP LEFT
       ====================================================== */}
-
       <motion.div
         animate={{
           scale: [1, 1.15, 1],
@@ -77,8 +83,12 @@ export default function Hero() {
           blur-[120px]
           pointer-events-none
         "
+        aria-hidden="true"
       />
 
+      {/* =====================================================
+          GREEN GLOW - BOTTOM RIGHT
+      ====================================================== */}
       <motion.div
         animate={{
           scale: [1, 1.1, 1],
@@ -101,12 +111,12 @@ export default function Hero() {
           blur-[150px]
           pointer-events-none
         "
+        aria-hidden="true"
       />
 
       {/* =====================================================
           MAIN CONTENT
       ====================================================== */}
-
       <div
         className="
           relative
@@ -121,11 +131,9 @@ export default function Hero() {
           pb-16
         "
       >
-
-        {/* =========================
+        {/* =====================================================
             BADGE
-        ========================== */}
-
+        ====================================================== */}
         <motion.div
           initial={{
             opacity: 0,
@@ -163,10 +171,9 @@ export default function Hero() {
           <Star className="w-3.5 h-3.5 fill-[#00c874]" />
         </motion.div>
 
-        {/* =========================
+        {/* =====================================================
             HEADING
-        ========================== */}
-
+        ====================================================== */}
         <motion.h1
           initial={{
             opacity: 0,
@@ -201,10 +208,9 @@ export default function Hero() {
           </span>
         </motion.h1>
 
-        {/* =========================
+        {/* =====================================================
             SUBTITLE
-        ========================== */}
-
+        ====================================================== */}
         <motion.p
           initial={{
             opacity: 0,
@@ -230,10 +236,9 @@ export default function Hero() {
           A Spacious Venue For Your Special Event
         </motion.p>
 
-        {/* =========================
+        {/* =====================================================
             DESCRIPTION
-        ========================== */}
-
+        ====================================================== */}
         <motion.p
           initial={{
             opacity: 0,
@@ -262,10 +267,9 @@ export default function Hero() {
           and private events.
         </motion.p>
 
-        {/* =========================
+        {/* =====================================================
             BUTTONS
-        ========================== */}
-
+        ====================================================== */}
         <motion.div
           initial={{
             opacity: 0,
@@ -287,9 +291,7 @@ export default function Hero() {
             mt-9
           "
         >
-
           {/* BOOK NOW */}
-
           <motion.button
             whileHover={{
               scale: 1.05,
@@ -321,7 +323,6 @@ export default function Hero() {
           </motion.button>
 
           {/* EXPLORE */}
-
           <motion.button
             whileHover={{
               scale: 1.05,
@@ -351,13 +352,11 @@ export default function Hero() {
           >
             Explore More
           </motion.button>
-
         </motion.div>
 
-        {/* =========================
+        {/* =====================================================
             STATISTICS
-        ========================== */}
-
+        ====================================================== */}
         <motion.div
           initial={{
             opacity: 0,
@@ -391,7 +390,7 @@ export default function Hero() {
               }}
               className="text-center relative"
             >
-
+              {/* Divider */}
               {index > 0 && (
                 <span
                   className="
@@ -408,6 +407,7 @@ export default function Hero() {
                 />
               )}
 
+              {/* Number */}
               <div
                 className="
                   text-3xl
@@ -419,6 +419,7 @@ export default function Hero() {
                 {value}
               </div>
 
+              {/* Label */}
               <div
                 className="
                   text-white/60
@@ -431,17 +432,14 @@ export default function Hero() {
               >
                 {label}
               </div>
-
             </motion.div>
           ))}
         </motion.div>
-
       </div>
 
       {/* =====================================================
           SCROLL INDICATOR
       ====================================================== */}
-
       <motion.button
         animate={{
           y: [0, 8, 0],
@@ -465,7 +463,6 @@ export default function Hero() {
       >
         <ArrowDown className="w-6 h-6" />
       </motion.button>
-
     </section>
   );
 }

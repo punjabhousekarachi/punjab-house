@@ -11,7 +11,7 @@ import {
 import { Link } from "react-router-dom";
 
 const Name = "Syed Ahsan Abrar";
-const PHONE = "+92 329 2158907";
+const PHONE = "+92 300 2329597";
 const EMAIL = "punjabhousekarachi@gmail.com";
 
 const info = [

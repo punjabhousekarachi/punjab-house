@@ -218,7 +218,7 @@ export default function Footer() {
                 <div>
 
                   <p className="text-white text-sm font-semibold">
-                    +92 329 2158907
+                    +92 300 2329597
                   </p>
 
                   <p className="text-white/40 text-xs mt-1">
