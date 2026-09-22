@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { Calendar, ArrowDown, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -11,18 +11,6 @@ const stats = [
 
 export default function Hero() {
   const navigate = useNavigate();
-  const desktopVideoRef = useRef(null);
-  const mobileVideoRef = useRef(null);
-
-  useEffect(() => {
-    if (desktopVideoRef.current) {
-      desktopVideoRef.current.playbackRate = 1;
-    }
-
-    if (mobileVideoRef.current) {
-      mobileVideoRef.current.playbackRate = 1;
-    }
-  }, []);
 
   const scrollTo = (id) => {
     document.querySelector(id)?.scrollIntoView({
@@ -36,74 +24,18 @@ export default function Hero() {
       className="relative min-h-screen overflow-hidden flex flex-col justify-center"
     >
       {/* =====================================================
-          BACKGROUND VIDEOS
-          Desktop = Horizontal Video
-          Mobile = Vertical Video
+          BACKGROUND IMAGE
+          (replaces the old autoplaying videos, which were
+          causing the site to lag)
       ====================================================== */}
 
-      <div className="absolute inset-0 overflow-hidden bg-black">
-
-        {/* =========================
-            DESKTOP VIDEO
-        ========================== */}
-        <video
-          ref={desktopVideoRef}
-          className="
-            hidden
-            md:block
-            absolute
-            inset-0
-            w-full
-            h-full
-            object-cover
-          "
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          poster="/images/hero-poster.jpg"
-        >
-          <source
-            src="/videos/punjab-house.mp4"
-            type="video/mp4"
-          />
-
-          Your browser does not support the video tag.
-        </video>
-
-        {/* =========================
-            MOBILE VIDEO
-        ========================== */}
-        <video
-          ref={mobileVideoRef}
-          className="
-            md:hidden
-            absolute
-            inset-0
-            w-full
-            h-full
-            object-cover
-          "
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          poster="/images/hero-poster.jpg"
-        >
-          <source
-            src="/videos/punjab-house-mobile.mp4"
-            type="video/mp4"
-          />
-
-          Your browser does not support the video tag.
-        </video>
-
-      </div>
+      <div
+        className="absolute inset-0 overflow-hidden bg-black bg-cover bg-center"
+        style={{ backgroundImage: "url('/hero.png')" }}
+      />
 
       {/* =====================================================
-          VIDEO OVERLAY
+          OVERLAY
       ====================================================== */}
 
       <div className="absolute inset-0 bg-black/25 pointer-events-none" />
