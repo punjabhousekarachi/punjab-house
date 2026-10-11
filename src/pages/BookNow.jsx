@@ -24,10 +24,13 @@ const API_URL =
   "https://punjab-house-production.up.railway.app";
 
 // ======================================================
-// TERMS & CONDITIONS IMAGE
+// TERMS & CONDITIONS IMAGES
 // ======================================================
 
-const TERMS_IMAGE = "/terms-and-conditions.jpg";
+const TERMS_IMAGES = [
+  "/images/Punjab House Karachi Lawn Rent_page-0001.jpg",
+  "/images/Punjab House Karachi Lawn Rent_page-0002.jpg",
+];
 
 // ======================================================
 // INITIAL FORM
@@ -105,7 +108,6 @@ export default function BookNow() {
 
     setForm((previous) => ({
       ...previous,
-
       rooms,
 
       roomCharges:
@@ -312,7 +314,6 @@ export default function BookNow() {
       // Reset form
       setForm(initialForm);
 
-      // IMPORTANT:
       // Hide the form after successful submission
       setShowForm(false);
 
@@ -450,9 +451,7 @@ export default function BookNow() {
 
         <div className="mx-auto max-w-5xl">
 
-          {/* =================================================
-              SUCCESS MESSAGE
-          ================================================= */}
+          {/* SUCCESS MESSAGE */}
 
           {success && (
 
@@ -480,18 +479,14 @@ export default function BookNow() {
 
           )}
 
-          {/* =================================================
-              ERROR MESSAGE
-          ================================================= */}
+          {/* ERROR MESSAGE */}
 
           {error && (
 
             <div className="mb-8 flex items-start gap-4 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800 shadow-sm">
 
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500 font-bold text-white">
-
                 !
-
               </div>
 
               <div>
@@ -510,9 +505,7 @@ export default function BookNow() {
 
           )}
 
-          {/* =================================================
-              AFTER SUCCESS
-          ================================================= */}
+          {/* AFTER SUCCESS */}
 
           {!showForm && (
 
@@ -557,9 +550,7 @@ export default function BookNow() {
 
           )}
 
-          {/* =================================================
-              FORM
-          ================================================= */}
+          {/* FORM */}
 
           {showForm && (
 
@@ -1006,7 +997,7 @@ export default function BookNow() {
               </div>
 
               {/* =================================================
-                  TERMS
+                  TERMS & CONDITIONS
               ================================================= */}
 
               <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -1039,15 +1030,30 @@ export default function BookNow() {
 
                 <div className="space-y-6 p-6 sm:p-8">
 
-                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                  {/* TWO T&C IMAGES */}
 
-                    <img
-                      src={TERMS_IMAGE}
-                      alt="Punjab House Terms and Conditions"
-                      className="h-auto w-full object-contain"
-                    />
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+
+                    {TERMS_IMAGES.map((image, index) => (
+
+                      <div
+                        key={image}
+                        className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm"
+                      >
+
+                        <img
+                          src={image}
+                          alt={`Punjab House Terms and Conditions ${index + 1}`}
+                          className="h-auto w-full object-contain"
+                        />
+
+                      </div>
+
+                    ))}
 
                   </div>
+
+                  {/* TERMS CHECKBOX */}
 
                   <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-300 hover:bg-emerald-50">
 
@@ -1237,4 +1243,3 @@ function Agreement({
     </label>
   );
 }
-
