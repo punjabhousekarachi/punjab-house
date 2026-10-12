@@ -2,22 +2,22 @@ import React, { useState } from "react";
 
 const items = [
   [
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRswsuPK9van1eCyKppXmdzo-gUXlrZr9GIjHfZj_IeqxgDjFZgWV93VTxh&s=10",
+    "/hero.webp",
     "Wedding",
     "Wedding Venue",
   ],
   [
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCDuh8PppY_KeN3IOTR2SRpRE8GmV3SYP2GkVEbuEIQ2YDScqqwWc4DJ8&s=10",
+    "/hero.webp",
     "Reception",
     "Reception Venue",
   ],
   [
-    "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=1200&q=85",
+    "/hero.webp",
     "Corporate",
     "Corporate Event",
   ],
 [
-  "/images/wedding2.png",
+    "/hero.webp",
   "Wedding",
   "Outdoor Event Space",
 ],

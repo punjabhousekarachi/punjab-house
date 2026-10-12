@@ -47,7 +47,7 @@ export default function About() {
 
             <div className="overflow-hidden rounded-[2rem] shadow-2xl">
               <img
-                src="/images/image2.png"
+                src="/hero.webp"
                 alt="Punjab House venue"
                 className="
                   w-full

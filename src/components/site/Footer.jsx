@@ -101,7 +101,7 @@ export default function Footer() {
               {/* WhatsApp */}
               <a
                 aria-label="WhatsApp"
-                href="https://wa.me/923292158907"
+                href="https://wa.me/923002329597"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
