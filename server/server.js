@@ -1,4 +1,3 @@
-
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -29,7 +28,7 @@ app.use(
         return callback(null, true);
       }
 
-      console.log("⚠️ CORS blocked:", origin);
+      console.log("CORS blocked:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "OPTIONS"],
@@ -37,10 +36,6 @@ app.use(
     credentials: false,
   })
 );
-
-// ======================================================
-// BODY PARSER
-// ======================================================
 
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
@@ -53,14 +48,13 @@ let resend = null;
 
 if (process.env.RESEND_API_KEY) {
   resend = new Resend(process.env.RESEND_API_KEY);
-  console.log("📧 Resend email service initialized.");
+  console.log("Resend email service initialized.");
 } else {
-  console.error("❌ RESEND_API_KEY is missing.");
+  console.error("RESEND_API_KEY is missing.");
 }
 
 console.log("======================================");
 console.log("Punjab House Karachi Booking API");
-console.log("======================================");
 console.log("RESEND_API_KEY:", process.env.RESEND_API_KEY ? "SET" : "MISSING");
 console.log("ADMIN_EMAIL:", process.env.ADMIN_EMAIL ? "SET" : "MISSING");
 console.log("PORT:", PORT);
@@ -104,10 +98,6 @@ function generateBookingPDF(data) {
 
   let y = 15;
 
-  // ====================================================
-  // PAGE HEADER
-  // ====================================================
-
   function drawPageHeader() {
     doc.setFillColor(...DARK);
     doc.rect(0, 0, PAGE_WIDTH, 35, "F");
@@ -120,8 +110,6 @@ function generateBookingPDF(data) {
     doc.setFontSize(9);
     doc.text("PH", 25, 20.2, { align: "center" });
 
-    doc.setTextColor(...WHITE);
-    doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
     doc.text("Punjab House", 37, 15);
 
@@ -147,10 +135,6 @@ function generateBookingPDF(data) {
     y = 44;
   }
 
-  // ====================================================
-  // FOOTER
-  // ====================================================
-
   function drawFooter() {
     doc.setDrawColor(...BORDER);
     doc.setLineWidth(0.3);
@@ -166,10 +150,6 @@ function generateBookingPDF(data) {
     });
   }
 
-  // ====================================================
-  // PAGE MANAGEMENT
-  // ====================================================
-
   function addNewPage() {
     drawFooter();
     doc.addPage();
@@ -181,10 +161,6 @@ function generateBookingPDF(data) {
       addNewPage();
     }
   }
-
-  // ====================================================
-  // SECTION HEADING
-  // ====================================================
 
   function drawSectionHeading(title, subtitle = "") {
     ensureSpace(23);
@@ -210,10 +186,6 @@ function generateBookingPDF(data) {
     y += 21;
   }
 
-  // ====================================================
-  // SINGLE FIELD
-  // ====================================================
-
   function drawField(label, value, options = {}) {
     const {
       width = CONTENT_WIDTH,
@@ -235,9 +207,8 @@ function generateBookingPDF(data) {
     doc.setLineWidth(0.35);
     doc.roundedRect(LEFT, y, width, height, 2, 2, "FD");
 
-    const safeValue = value || " ";
     const lines = doc.splitTextToSize(
-      String(safeValue),
+      String(value || " "),
       width - 8
     );
 
@@ -253,10 +224,6 @@ function generateBookingPDF(data) {
 
     y += height + 7;
   }
-
-  // ====================================================
-  // TWO FIELDS
-  // ====================================================
 
   function drawTwoFields(leftField, rightField) {
     const gap = 6;
@@ -278,13 +245,22 @@ function generateBookingPDF(data) {
     doc.setLineWidth(0.35);
 
     doc.roundedRect(LEFT, y, width, 14, 2, 2, "FD");
-    doc.roundedRect(LEFT + width + gap, y, width, 14, 2, 2, "FD");
+    doc.roundedRect(
+      LEFT + width + gap,
+      y,
+      width,
+      14,
+      2,
+      2,
+      "FD"
+    );
 
     doc.setTextColor(...TEXT);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
 
     doc.text(String(leftField.value || "-"), LEFT + 4, y + 8);
+
     doc.text(
       String(rightField.value || "-"),
       LEFT + width + gap + 4,
@@ -293,10 +269,6 @@ function generateBookingPDF(data) {
 
     y += 21;
   }
-
-  // ====================================================
-  // AGREEMENT CHECKMARK
-  // ====================================================
 
   function drawCheckmark(x, yPos, size = 10) {
     doc.setDrawColor(...WHITE);
@@ -317,16 +289,13 @@ function generateBookingPDF(data) {
     );
   }
 
-  // ====================================================
-  // AGREEMENT BOX
-  // ====================================================
-
   function drawAgreementBox(title, amount, accepted) {
     ensureSpace(28);
 
     doc.setFillColor(...(accepted ? GREEN_LIGHT : RED_LIGHT));
     doc.setDrawColor(...BORDER);
     doc.setLineWidth(0.4);
+
     doc.roundedRect(LEFT, y, CONTENT_WIDTH, 21, 3, 3, "FD");
 
     const checkboxX = LEFT + 5;
@@ -387,9 +356,7 @@ function generateBookingPDF(data) {
     y += 27;
   }
 
-  // ====================================================
-  // BUILD PDF
-  // ====================================================
+  // PDF CONTENT
 
   drawPageHeader();
 
@@ -411,7 +378,6 @@ function generateBookingPDF(data) {
 
   y += 16;
 
-  // EVENT INFORMATION
   drawSectionHeading("Event Information", "Tell us about your event");
 
   drawTwoFields(
@@ -421,7 +387,8 @@ function generateBookingPDF(data) {
 
   drawField("Event Timing *", data.eventTiming);
 
-  // VENUE CHARGES
+  // IMPORTANT: All three venue charges appear in the PDF.
+
   drawSectionHeading(
     "Venue Charges",
     "Review the applicable charges and agreements"
@@ -429,17 +396,22 @@ function generateBookingPDF(data) {
 
   drawAgreementBox(
     "Lawn Rent",
-    data.lawnRent,
-    data.lawnRentAgreement
+    data.lawnRent || "Rs. 500,000/-",
+    Boolean(data.lawnRentAgreement)
+  );
+
+  drawAgreementBox(
+    "Maintenance Charges",
+    data.maintenanceCharges || "Rs. 500,000/-",
+    Boolean(data.maintenanceAgreement)
   );
 
   drawAgreementBox(
     "Advance / Refundable Security",
-    data.advanceSecurity,
-    data.advanceAgreement
+    data.advanceSecurity || "Rs. 100,000/-",
+    Boolean(data.advanceAgreement)
   );
 
-  // ROOMS
   drawSectionHeading(
     "Rooms",
     "Maximum 2 rooms available. Rs. 5,000 per room."
@@ -458,13 +430,15 @@ function generateBookingPDF(data) {
     }
   );
 
-  // CLIENT INFORMATION
   drawSectionHeading(
     "Client Information",
     "Personal and contact information"
   );
 
-  drawField("Name of Client & Designation / C/o *", data.clientName);
+  drawField(
+    "Name of Client & Designation / C/o *",
+    data.clientName
+  );
 
   drawTwoFields(
     { label: "C.N.I. No. *", value: data.cnic },
@@ -476,16 +450,14 @@ function generateBookingPDF(data) {
     multiline: true,
   });
 
-  // TERMS
   drawSectionHeading("Terms & Conditions", "Applicant confirmation");
 
   drawAgreementBox(
     "I have read and accepted all terms and conditions",
     "Accepted",
-    data.termsAccepted
+    Boolean(data.termsAccepted)
   );
 
-  // FINAL BOX
   ensureSpace(35);
 
   doc.setFillColor(...GREEN);
@@ -529,6 +501,12 @@ function validateBooking(data) {
 
   if (!data.lawnRentAgreement) {
     return "Lawn Rent agreement is required.";
+  }
+
+  // Maintenance agreement is now required.
+
+  if (!data.maintenanceAgreement) {
+    return "Maintenance Charges agreement is required.";
   }
 
   if (!data.advanceAgreement) {
@@ -581,7 +559,6 @@ function validateBooking(data) {
 
 // ======================================================
 // EMAIL HTML
-// Updated: white top header box with subtle border
 // ======================================================
 
 function createEmailHTML(data) {
@@ -590,16 +567,27 @@ function createEmailHTML(data) {
     ["Event Date", data.eventDate],
     ["Event", data.event],
     ["Event Timing", data.eventTiming],
-    ["Lawn Rent", data.lawnRent],
+
+    ["Lawn Rent", data.lawnRent || "Rs. 500,000/-"],
     [
       "Lawn Rent Agreement",
       data.lawnRentAgreement ? "Accepted" : "Not Accepted",
     ],
-    ["Advance Security", data.advanceSecurity],
+
+    // MAINTENANCE DETAILS NOW APPEAR IN EMAIL.
+
+    ["Maintenance Charges", data.maintenanceCharges || "Rs. 500,000/-"],
+    [
+      "Maintenance Agreement",
+      data.maintenanceAgreement ? "Accepted" : "Not Accepted",
+    ],
+
+    ["Advance Security", data.advanceSecurity || "Rs. 100,000/-"],
     [
       "Advance Agreement",
       data.advanceAgreement ? "Accepted" : "Not Accepted",
     ],
+
     ["Rooms", data.rooms],
     ["Room Charges", data.roomCharges || "Rs. 0/-"],
     ["CNIC", data.cnic],
@@ -654,7 +642,6 @@ function createEmailHTML(data) {
   background:#f8fafc;
   font-family:Arial,Helvetica,sans-serif;
 ">
-
   <div style="
     max-width:700px;
     margin:30px auto;
@@ -663,15 +650,12 @@ function createEmailHTML(data) {
     overflow:hidden;
     border:1px solid #e2e8f0;
   ">
-
-    <!-- WHITE HEADER BOX -->
     <div style="
       background:#ffffff;
       padding:30px;
       text-align:center;
       border-bottom:1px solid #e2e8f0;
     ">
-
       <h1 style="
         margin:0;
         color:#0f172a;
@@ -690,12 +674,9 @@ function createEmailHTML(data) {
       ">
         NEW BOOKING REQUEST
       </p>
-
     </div>
 
-    <!-- BOOKING DETAILS -->
     <div style="padding:30px;">
-
       <h2 style="
         margin:0 0 20px;
         color:#0f172a;
@@ -715,7 +696,6 @@ function createEmailHTML(data) {
         </tbody>
       </table>
 
-      <!-- PDF ATTACHMENT NOTICE -->
       <div style="
         margin-top:24px;
         padding:18px;
@@ -737,10 +717,8 @@ function createEmailHTML(data) {
           to this email as a PDF.
         </p>
       </div>
-
     </div>
 
-    <!-- FOOTER -->
     <div style="
       padding:18px 30px;
       background:#f8fafc;
@@ -753,9 +731,7 @@ function createEmailHTML(data) {
       Punjab House Karachi<br>
       GOR-1, Bath Island, Clifton, Karachi
     </div>
-
   </div>
-
 </body>
 </html>
 `;
@@ -779,7 +755,7 @@ async function sendBookingEmail(data, pdfBuffer, fileName) {
   const fromEmail =
     process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
 
-  console.log("📧 Sending booking email with Resend...");
+  console.log("Sending booking email with Resend...");
   console.log("From:", fromEmail);
   console.log("To:", process.env.ADMIN_EMAIL);
 
@@ -789,6 +765,7 @@ async function sendBookingEmail(data, pdfBuffer, fileName) {
 
     subject: `New Punjab House Booking - ${data.clientName}`,
 
+    // Plain-text email includes Maintenance Charges too.
     text: `
 New Punjab House Booking
 
@@ -796,14 +773,22 @@ Client Name: ${data.clientName}
 Event Date: ${data.eventDate}
 Event: ${data.event}
 Event Timing: ${data.eventTiming}
-Lawn Rent: ${data.lawnRent}
+
+Lawn Rent: ${data.lawnRent || "Rs. 500,000/-"}
 Lawn Rent Agreement: ${
       data.lawnRentAgreement ? "Accepted" : "Not Accepted"
     }
-Advance Security: ${data.advanceSecurity}
+
+Maintenance Charges: ${data.maintenanceCharges || "Rs. 500,000/-"}
+Maintenance Agreement: ${
+      data.maintenanceAgreement ? "Accepted" : "Not Accepted"
+    }
+
+Advance Security: ${data.advanceSecurity || "Rs. 100,000/-"}
 Advance Security Agreement: ${
       data.advanceAgreement ? "Accepted" : "Not Accepted"
     }
+
 Rooms: ${data.rooms}
 Room Charges: ${data.roomCharges || "Rs. 0/-"}
 CNIC: ${data.cnic}
@@ -825,14 +810,14 @@ Terms & Conditions: ${
   });
 
   if (result.error) {
-    console.error("❌ Resend API error:", result.error);
+    console.error("Resend API error:", result.error);
 
     throw new Error(
       result.error.message || "Resend failed to send email."
     );
   }
 
-  console.log("✅ Resend email sent.");
+  console.log("Resend email sent.");
   console.log("Email ID:", result.data?.id || "N/A");
 
   return result.data;
@@ -844,7 +829,7 @@ Terms & Conditions: ${
 
 app.post("/api/bookings", async (req, res) => {
   console.log("======================================");
-  console.log("📩 NEW BOOKING REQUEST");
+  console.log("NEW BOOKING REQUEST");
   console.log("======================================");
 
   try {
@@ -853,7 +838,7 @@ app.post("/api/bookings", async (req, res) => {
     const validationError = validateBooking(data);
 
     if (validationError) {
-      console.log("❌ Validation:", validationError);
+      console.log("Validation:", validationError);
 
       return res.status(400).json({
         success: false,
@@ -862,8 +847,6 @@ app.post("/api/bookings", async (req, res) => {
     }
 
     if (!process.env.RESEND_API_KEY) {
-      console.error("❌ RESEND_API_KEY is missing.");
-
       return res.status(500).json({
         success: false,
         message: "Email service is not configured on Railway.",
@@ -871,20 +854,18 @@ app.post("/api/bookings", async (req, res) => {
     }
 
     if (!process.env.ADMIN_EMAIL) {
-      console.error("❌ ADMIN_EMAIL is missing.");
-
       return res.status(500).json({
         success: false,
         message: "Admin email is not configured on Railway.",
       });
     }
 
-    console.log("📄 Generating PDF...");
+    console.log("Generating PDF...");
 
     const pdfArrayBuffer = generateBookingPDF(data);
     const pdfBuffer = Buffer.from(pdfArrayBuffer);
 
-    console.log("✅ PDF generated.");
+    console.log("PDF generated.");
 
     const safeName =
       String(data.clientName)
@@ -895,20 +876,17 @@ app.post("/api/bookings", async (req, res) => {
 
     await sendBookingEmail(data, pdfBuffer, fileName);
 
-    console.log("✅ Booking email sent successfully.");
-    console.log("======================================");
+    console.log("Booking email sent successfully.");
 
     return res.status(200).json({
       success: true,
       message: "Booking submitted successfully.",
     });
   } catch (error) {
-    console.error("======================================");
-    console.error("❌ BOOKING ERROR");
+    console.error("BOOKING ERROR");
     console.error("Code:", error.code || "UNKNOWN");
     console.error("Message:", error.message || "Unknown error");
-    console.error("Full error:", error);
-    console.error("======================================");
+    console.error(error);
 
     return res.status(500).json({
       success: false,
@@ -980,7 +958,7 @@ app.use((req, res) => {
 // ======================================================
 
 app.use((error, req, res, next) => {
-  console.error("❌ Global server error:", error);
+  console.error("Global server error:", error);
 
   if (res.headersSent) {
     return next(error);
@@ -998,9 +976,9 @@ app.use((error, req, res, next) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("======================================");
-  console.log(`🚀 Punjab House API running on port ${PORT}`);
-  console.log("🌐 Railway server listening on 0.0.0.0");
-  console.log(`🌍 Frontend: ${FRONTEND_URL}`);
-  console.log("📧 Email provider: Resend");
+  console.log(`Punjab House API running on port ${PORT}`);
+  console.log("Railway server listening on 0.0.0.0");
+  console.log(`Frontend: ${FRONTEND_URL}`);
+  console.log("Email provider: Resend");
   console.log("======================================");
 });
